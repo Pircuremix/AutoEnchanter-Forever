@@ -1,11 +1,17 @@
 # Changelog
 
-## 1.3.2 — WowUp update test (release candidate)
+## Unreleased — documentation
+
+- Expanded public-facing README and added a dedicated WowUp integration and troubleshooting guide.
+- Corrected outdated private-repository and CI statements. Documentation only; no new addon version.
+
+## 1.3.2 — 2026-11-24 — WowUp update test (release candidate)
 
 - Shortened the release asset to `AutoEnchanter-1.3.2.zip`.
 - Added explicit Forever client metadata in the separate `release.json` release asset, matching WowUp's metadata selection format.
 - Updated the public-repository installation instructions and synchronized the in-game version.
 - No changes to invite behavior, saved settings, matching, icon or category. This version is intended to verify the WowUp update path.
+- Published successfully with ZIP and release.json after correcting an initial workflow shell-quoting failure; Lua 5.1 and 5.4 CI passed.
 
 ## 1.3.1 — 2026-11-24 (release candidate)
 

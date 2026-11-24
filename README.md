@@ -1,12 +1,29 @@
 # AutoEnchanter — WoW Forever
 
-**Version 1.3.2 (release candidate)** • Target: World of Warcraft: Forever 1.60.1, Interface 16001 • Original author: Sleepy
+[![Latest release](https://img.shields.io/github/v/release/Pircuremix/AutoEnchanter-Forever)](https://github.com/Pircuremix/AutoEnchanter-Forever/releases/latest) [![Lua regression tests](https://github.com/Pircuremix/AutoEnchanter-Forever/actions/workflows/tests.yml/badge.svg)](https://github.com/Pircuremix/AutoEnchanter-Forever/actions/workflows/tests.yml) [![Publish Forever release](https://github.com/Pircuremix/AutoEnchanter-Forever/actions/workflows/release.yml/badge.svg)](https://github.com/Pircuremix/AutoEnchanter-Forever/actions/workflows/release.yml)
+
+**Quick links:** [Latest download](https://github.com/Pircuremix/AutoEnchanter-Forever/releases/latest) · [WowUp setup](docs/WOWUP.md) · [Changelog](CHANGELOG.md) · [API audit](API-AUDIT.md) · [Report a problem](https://github.com/Pircuremix/AutoEnchanter-Forever/issues)
+
+**Latest published version: 1.3.2 (release candidate)** • Target: World of Warcraft: Forever 1.60.1, Interface 16001 • Original author: Sleepy
 
 AutoEnchanter monitors public chat for customer requests that match your manually curated enchant whitelist, then immediately calls the native party invite API when enabled and eligible. It does not perform enchants, inspect your recipe book, advertise, send whispers, confirm dialogs, or guarantee delivery of invitations. It does not attempt to bypass Blizzard's restrictions.
 
+## Features
+
+- Event-driven monitoring of General, Trade, Say and Yell chat.
+- Exact normalized whitelist matching, with explicit enchant aliases, typo handling, links and tip removal.
+- Native party invite requests, with a seven-second per-player cooldown and eligibility checks.
+- Full Forever character names, right-click whitelist learning, and dry-run diagnostics.
+- Account-wide saved settings, custom enchanting icon and Professions category.
+- Versioned GitHub releases and WowUp installation/automatic updates on supported clients.
+
 ## Install or upgrade
 
-1. Exit WoW. Back up your old addon folder and account SavedVariables file.
+**Recommended: WowUp.** Select the Forever client, import `https://github.com/Pircuremix/AutoEnchanter-Forever`, and enable Auto Update. See the [complete WowUp guide](docs/WOWUP.md). No GitHub token is required.
+
+**Manual installation:**
+
+1. Download the versioned addon ZIP from [GitHub Releases](https://github.com/Pircuremix/AutoEnchanter-Forever/releases/latest), not the automatically generated source archive. Exit WoW and back up your old addon folder and account SavedVariables file.
 2. Extract the installation ZIP so the folder `AutoEnchanter` is directly inside `World of Warcraft/_forever_/Interface/AddOns/`. The actual game directory can be found via Battle.net > WoW Forever > Show in Explorer.
 3. The layout must be `AddOns/AutoEnchanter/AutoEnchanter.toc` and `AddOns/AutoEnchanter/AutoEnchanter.lua`, plus `AddOns/AutoEnchanter/AutoEnchanterIcon.blp` for the custom icon.
 4. Launch Forever, enable Auto Enchanter in the addon list, and enter `/ae diagnostics`.
@@ -14,7 +31,7 @@ AutoEnchanter monitors public chat for customer requests that match your manuall
 
 ### Preserve your TBC whitelist
 
-The global SavedVariables table remains `AutoEnchanterDB` with `whitelist`, `debug`, `enabled`, and `popupEnabled`. In your old client's `WTF/Account/<account>/SavedVariables/`, locate `AutoEnchanter.lua` (not the addon source). With both clients closed, copy it to the equivalent directory under `_forever_`. Back up any existing Forever file first; copying replaces its contents. Your actual saved whitelist was not supplied for this audit. Existing valid string entries and boolean settings are preserved; malformed or empty-normalized entries are discarded, and existing duplicate valid strings are retained. Settings are account-wide, not character-specific. A fresh install starts enabled, with debug simulation and right-click learning enabled, but an empty whitelist.
+The global SavedVariables table remains `AutoEnchanterDB` with `whitelist`, `debug`, `enabled`, and `popupEnabled`. In your old client's `WTF/Account/<account>/SavedVariables/`, locate `AutoEnchanter.lua` (not the addon source). With both clients closed, copy it to the equivalent directory under `_forever_`. Back up any existing Forever file first; copying replaces its contents. The audit did not include any player's actual saved whitelist. Existing valid string entries and boolean settings are preserved; malformed or empty-normalized entries are discarded, and existing duplicate valid strings are retained. Settings are account-wide, not character-specific. A fresh install starts enabled, with debug simulation and right-click learning enabled, but an empty whitelist.
 
 ## WowUp installation and updates
 
@@ -29,7 +46,7 @@ Releases contain `AutoEnchanter-<version>.zip` and `release.json`, which maps th
 
 For each future release, increment the TOC version and synchronize the Lua version strings before committing to main. The release workflow tests Lua 5.1 and 5.4, builds and validates the ZIP and release metadata, and publishes a new release without overwriting an existing version. It runs on changes to the TOC on main, or manually from Actions > Publish Forever release. The ZIP contains only the Lua, TOC and BLP files under the addon folder; settings, tests and metadata are excluded. The 64×64 BLP2 custom icon and Professions category are unchanged.
 
-Official guide: https://wowup.io/guide/get-addons/overview
+For troubleshooting, update verification, metadata details and maintainer instructions, see [WowUp integration guide](docs/WOWUP.md). Official guide: https://wowup.io/guide/get-addons/overview
 
 ## Commands
 
@@ -90,7 +107,7 @@ Native `C_PartyInfo.InviteUnit(targetName)` has a valid-target restriction and n
 
 ## Test and release procedure
 
-From the source repository root, run `lua5.1 tests/regression.lua` (or `lua5.4 tests/regression.lua`). CI runs both versions on pushes and pull requests. This audit executed the suite with Lua 5.4 in an offline mocked client, not Blizzard's runtime. See `API-AUDIT.md` and `TEST-RESULTS.txt`. CI is supplied but has not yet executed on GitHub. The mock covers event flow, aliases, price parsing, negative matches, duplicate entries, secret fields, channel numbering, name preservation, cooldown, full party, permission failure, existing members, debug, disabled mode, menus, missing APIs, errors and blocked invites. It also processes a 10,000-message unrelated workload. The mock does not reproduce Blizzard's protected runtime, native menu tag dispatch, real server responses, or network latency.
+From the source repository root, run `lua5.1 tests/regression.lua` (or `lua5.4 tests/regression.lua`). CI runs both versions on pushes and pull requests. This audit executed the suite with Lua 5.4 in an offline mocked client, not Blizzard's runtime. See `API-AUDIT.md` and `TEST-RESULTS.txt`. GitHub Actions passed the Lua 5.1 and 5.4 regression matrix and the corrected release workflow for v1.3.2. See [CI run](https://github.com/Pircuremix/AutoEnchanter-Forever/actions/runs/45490266585) and [release run](https://github.com/Pircuremix/AutoEnchanter-Forever/actions/runs/45490266550). The mock covers event flow, aliases, price parsing, negative matches, duplicate entries, secret fields, channel numbering, name preservation, cooldown, full party, permission failure, existing members, debug, disabled mode, menus, missing APIs, errors and blocked invites. It also processes a 10,000-message unrelated workload. The mock does not reproduce Blizzard's protected runtime, native menu tag dispatch, real server responses, or network latency.
 
 ### Live acceptance checklist (not yet performed)
 
@@ -109,6 +126,8 @@ From the source repository root, run `lua5.1 tests/regression.lua` (or `lua5.4 t
 - `tests/regression.lua`: reproducible offline regression test.
 - `TEST-RESULTS.txt`: actual local run output.
 - `CHANGELOG.md`: release changes.
+- `docs/WOWUP.md`: install, auto-update, troubleshooting and packaging guide.
 - `.github/workflows/tests.yml`: automated checks for future changes.
+- `.github/workflows/release.yml`: regression-tested, versioned Forever releases.
 
-Keep the source repository private. Do not commit the `WTF` directory, actual account SavedVariables, credentials, or chat logs. No public distribution license was assigned to your original code.
+This repository is public. Never commit the `WTF` directory, real account SavedVariables, credentials or chat logs. No public distribution license has been assigned; public visibility alone does not grant permission to redistribute or modify the code. AutoEnchanter is an independent addon, not affiliated with Blizzard or WowUp.
