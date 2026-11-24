@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.3.1 — 2026-11-24 (release candidate)
+
+- Added a custom 64×64 BLP2 enchanting icon to the in-game AddOns list.
+- Classified Auto Enchanter under Professions via TOC metadata.
+- Added versioned Forever release packaging and a tested-before-publish GitHub Actions workflow for WowUp.
+- No matching or invite logic changes; live client acceptance remains pending.
+
 ## 1.3.0 — 2026-11-24 (release candidate)
 
 - Audited Forever API signatures and removed the legacy invite fallback.

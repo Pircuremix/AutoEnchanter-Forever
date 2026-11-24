@@ -2,7 +2,9 @@
 ## Title: Auto Enchanter
 ## Notes: Forever: normalized whitelist matching and native party invite requests.
 ## Author: Sleepy
-## Version: 1.3.0
+## Version: 1.3.1
+## Category: Professions
+## IconTexture: Interface\AddOns\AutoEnchanter\AutoEnchanterIcon
 ## SavedVariables: AutoEnchanterDB
 
 AutoEnchanter.lua

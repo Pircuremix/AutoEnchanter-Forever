@@ -1,6 +1,6 @@
 # AutoEnchanter — WoW Forever
 
-**Version 1.3.0 (release candidate)** • Target: World of Warcraft: Forever 1.60.1, Interface 16001 • Original author: Sleepy
+**Version 1.3.1 (release candidate)** • Target: World of Warcraft: Forever 1.60.1, Interface 16001 • Original author: Sleepy
 
 AutoEnchanter monitors public chat for customer requests that match your manually curated enchant whitelist, then immediately calls the native party invite API when enabled and eligible. It does not perform enchants, inspect your recipe book, advertise, send whispers, confirm dialogs, or guarantee delivery of invitations. It does not attempt to bypass Blizzard's restrictions.
 
@@ -8,13 +8,26 @@ AutoEnchanter monitors public chat for customer requests that match your manuall
 
 1. Exit WoW. Back up your old addon folder and account SavedVariables file.
 2. Extract the installation ZIP so the folder `AutoEnchanter` is directly inside `World of Warcraft/_forever_/Interface/AddOns/`. The actual game directory can be found via Battle.net > WoW Forever > Show in Explorer.
-3. The layout must be `AddOns/AutoEnchanter/AutoEnchanter.toc` and `AddOns/AutoEnchanter/AutoEnchanter.lua`.
+3. The layout must be `AddOns/AutoEnchanter/AutoEnchanter.toc` and `AddOns/AutoEnchanter/AutoEnchanter.lua`, plus `AddOns/AutoEnchanter/AutoEnchanterIcon.blp` for the custom icon.
 4. Launch Forever, enable Auto Enchanter in the addon list, and enter `/ae diagnostics`.
 5. Use `/ae list` to verify your whitelist. Start with `/ae debug on` and `/ae on`, test a known phrase, and only then use `/ae debug off` for real invite calls.
 
 ### Preserve your TBC whitelist
 
 The global SavedVariables table remains `AutoEnchanterDB` with `whitelist`, `debug`, `enabled`, and `popupEnabled`. In your old client's `WTF/Account/<account>/SavedVariables/`, locate `AutoEnchanter.lua` (not the addon source). With both clients closed, copy it to the equivalent directory under `_forever_`. Back up any existing Forever file first; copying replaces its contents. Your actual saved whitelist was not supplied for this audit. Existing valid string entries and boolean settings are preserved; malformed or empty-normalized entries are discarded, and existing duplicate valid strings are retained. Settings are account-wide, not character-specific. A fresh install starts enabled, with debug simulation and right-click learning enabled, but an empty whitelist.
+
+## WowUp installation and updates
+
+The repository remains private. GitHub releases contain an installable `AutoEnchanter-<version>-forever.zip` asset, with the addon folder at the ZIP root. The release workflow runs on changes to the TOC on main, and can also be run manually from Actions > Publish Forever release. It tests both Lua 5.1 and 5.4 before publishing and will not overwrite an existing release.
+
+1. Use a current WowUp build with Forever support. Select the Forever client.
+2. If your WowUp edition offers a GitHub token field (Options > Addons), create a fine-grained GitHub personal access token scoped only to this repository, with read-only Contents permission (Metadata read is automatic). Paste it into WowUp locally, never into the repository, chat, or the addon URL.
+3. Under Get Addons > Install from URL, enter `https://github.com/Pircuremix/AutoEnchanter-Forever` once a release exists. Import, then right-click the installed addon and enable Auto Update. Private repository support depends on the WowUp build and authentication; a 401, 403 or 404 may indicate insufficient access or unsupported private downloads.
+4. If private GitHub import does not work, download the release asset while signed in to GitHub and extract it manually. Do not make the repository public merely to troubleshoot.
+
+For each future release, increment the TOC version and synchronize the Lua version strings before committing to main. The release workflow packages only the Lua, TOC and BLP files; it excludes settings, test files, and source ZIPs. The custom icon is a 64×64 BLP2 texture; the TOC assigns the Professions category. Close and reopen WoW after installing a new texture or TOC.
+
+Official guide: https://wowup.io/guide/get-addons/overview
 
 ## Commands
 

@@ -1,4 +1,4 @@
--- AutoEnchanter Forever 1.3.0 (release candidate)
+-- AutoEnchanter Forever 1.3.1 (release candidate)
 -- Normalized matching: ignores filler words, punctuation, spaces, and "Xg" / "X gold" patterns
 local ADDON = "Auto Enchanter"
 local addonName = ...
@@ -570,7 +570,7 @@ SlashCmdList["AUTOENCHANTER"] = function(msg)
     end
     if cmd == "diagnostics" or cmd == "diag" then
         local version, build, _, interface = GetBuildInfo()
-        printSys(("Version 1.3.0; client=%s build=%s interface=%s"):format(tostring(version), tostring(build), tostring(interface)))
+        printSys(("Version 1.3.1; client=%s build=%s interface=%s"):format(tostring(version), tostring(build), tostring(interface)))
         local party = C_PartyInfo or {}
         printSys(("InviteUnit=%s CanInvite=%s IsPartyFull=%s IsGUIDInGroup=%s"):format(type(party.InviteUnit), type(party.CanInvite), type(party.IsPartyFull), type(party.IsGUIDInGroup)))
         printSys(("Menu.ModifyMenu=%s issecretvalue=%s; automatic invites blocked=%s"):format(type(Menu and Menu.ModifyMenu), type(issecretvalue), tostring(inviteBlocked == true)))
@@ -731,7 +731,7 @@ frame:SetScript("OnEvent", function(self, event, ...)
     elseif event == "PLAYER_LOGIN" then
         if not db then InitDB() end
         RefreshIdentity()
-        printSys("Loaded 1.3.0. ENABLED=" .. (db.enabled and "ON" or "OFF") .. "; DEBUG=" .. (db.debug and "ON" or "OFF") .. "; popup=" .. (db.popupEnabled and "ON" or "OFF"))
+        printSys("Loaded 1.3.1. ENABLED=" .. (db.enabled and "ON" or "OFF") .. "; DEBUG=" .. (db.debug and "ON" or "OFF") .. "; popup=" .. (db.popupEnabled and "ON" or "OFF"))
         InitModernMenus()
         self:UnregisterEvent("PLAYER_LOGIN")
     elseif event == "PLAYER_ENTERING_WORLD" then
