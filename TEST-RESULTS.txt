@@ -1,0 +1,52 @@
+Executed 2026-11-24 using local liblua5.4 via Python ctypes. Mocked API; not live client.
+
+PASS saved whitelist valid originals retained
+PASS exact normalized phrase
+PASS alias/price LF enchater 15agi glove
+PASS alias/price LF ench 15 agi gloves my mats
+PASS alias/price LF enchanter 15agi gloves 20g tip
+PASS alias/price LF enchanter 15agi gloves 2.5 gold tip
+PASS alias/price LF enchanter 15agi gloves 30gold
+PASS alias/price LF enchanter +15 AGI gloves!!!
+PASS reject LF enchanter 7 agility gloves
+PASS reject LF enchanter 15 agility weapon
+PASS reject WTS enchanter 15 agility gloves
+PASS reject LF enchanter 15 agility gloves 15gems
+PASS reject LF enchanter 15 agility gloves plus crusader
+PASS duplicate normalized entries remain functional
+PASS duplicate rejected
+PASS fractional remove rejected
+PASS link parsing
+PASS debug no live invite
+PASS debug output
+PASS real call uses full raw name
+PASS delivery not asserted
+PASS space/hyphen same cooldown
+PASS same first name different surname
+PASS custom slot 2 ignored
+PASS General slot 9 accepted
+PASS self excluded
+PASS restricted message/name/GUID skipped
+PASS cooldown expires
+PASS full party no invite
+PASS permission denied
+PASS existing member excluded
+PASS secret eligibility fails closed
+PASS off means no invites
+PASS menu adds cached full-name entry
+PASS menu phrase persisted
+PASS restricted surname skipped
+PASS source-defined chat roster tag registered
+PASS restricted menu skipped
+PASS popup disabled
+PASS expired menu message ignored
+PASS say and yell work
+PASS missing native API does not crash
+PASS call error caught
+PASS unrelated block ignored
+PASS own blocked action detected
+PASS no more native calls after block
+PASS status records block
+PASS diagnostics record failure
+PASS 10000 unrelated messages no invites
+PASS total=49; workload CPU seconds=1.0749; runtime=Lua 5.4
