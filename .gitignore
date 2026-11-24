@@ -1,0 +1,6 @@
+WTF/
+SavedVariables/
+*.bak
+*.log
+*.zip
+.DS_Store
