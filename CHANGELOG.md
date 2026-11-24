@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.3.2 — WowUp update test (release candidate)
+
+- Shortened the release asset to `AutoEnchanter-1.3.2.zip`.
+- Added explicit Forever client metadata in the separate `release.json` release asset, matching WowUp's metadata selection format.
+- Updated the public-repository installation instructions and synchronized the in-game version.
+- No changes to invite behavior, saved settings, matching, icon or category. This version is intended to verify the WowUp update path.
+
 ## 1.3.1 — 2026-11-24 (release candidate)
 
 - Added a custom 64×64 BLP2 enchanting icon to the in-game AddOns list.

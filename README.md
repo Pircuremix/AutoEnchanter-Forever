@@ -1,6 +1,6 @@
 # AutoEnchanter — WoW Forever
 
-**Version 1.3.1 (release candidate)** • Target: World of Warcraft: Forever 1.60.1, Interface 16001 • Original author: Sleepy
+**Version 1.3.2 (release candidate)** • Target: World of Warcraft: Forever 1.60.1, Interface 16001 • Original author: Sleepy
 
 AutoEnchanter monitors public chat for customer requests that match your manually curated enchant whitelist, then immediately calls the native party invite API when enabled and eligible. It does not perform enchants, inspect your recipe book, advertise, send whispers, confirm dialogs, or guarantee delivery of invitations. It does not attempt to bypass Blizzard's restrictions.
 
@@ -18,14 +18,16 @@ The global SavedVariables table remains `AutoEnchanterDB` with `whitelist`, `deb
 
 ## WowUp installation and updates
 
-The repository remains private. GitHub releases contain an installable `AutoEnchanter-<version>-forever.zip` asset, with the addon folder at the ZIP root. The release workflow runs on changes to the TOC on main, and can also be run manually from Actions > Publish Forever release. It tests both Lua 5.1 and 5.4 before publishing and will not overwrite an existing release.
+This repository is public. No GitHub access token is required to install from its releases.
 
-1. Use a current WowUp build with Forever support. Select the Forever client.
-2. If your WowUp edition offers a GitHub token field (Options > Addons), create a fine-grained GitHub personal access token scoped only to this repository, with read-only Contents permission (Metadata read is automatic). Paste it into WowUp locally, never into the repository, chat, or the addon URL.
-3. Under Get Addons > Install from URL, enter `https://github.com/Pircuremix/AutoEnchanter-Forever` once a release exists. Import, then right-click the installed addon and enable Auto Update. Private repository support depends on the WowUp build and authentication; a 401, 403 or 404 may indicate insufficient access or unsupported private downloads.
-4. If private GitHub import does not work, download the release asset while signed in to GitHub and extract it manually. Do not make the repository public merely to troubleshoot.
+1. Use a current WowUp build with Forever support and release metadata support. Select the Forever client.
+2. Under Get Addons > Install from URL, enter `https://github.com/Pircuremix/AutoEnchanter-Forever`.
+3. Import, then right-click the installed addon and enable Auto Update. Refresh WowUp to check for a new release. Close WoW before updating and restart it afterwards.
+4. If import fails, download the ZIP asset from the latest GitHub release and extract it manually. Do not extract the separate `release.json` file.
 
-For each future release, increment the TOC version and synchronize the Lua version strings before committing to main. The release workflow packages only the Lua, TOC and BLP files; it excludes settings, test files, and source ZIPs. The custom icon is a 64×64 BLP2 texture; the TOC assigns the Professions category. Close and reopen WoW after installing a new texture or TOC.
+Releases contain `AutoEnchanter-<version>.zip` and `release.json`, which maps that exact ZIP name to flavor `forever` and interface 16001 (or the current interface read from the TOC). This allows compatible WowUp versions to select the correct package without the old `-forever.zip` suffix. WowUp v2.25.5 uses the asset filename as its version label, so the `.zip` extension will still appear. Older WowUp builds that require the suffix may need updating. The package targets Forever only; do not install it on other clients.
+
+For each future release, increment the TOC version and synchronize the Lua version strings before committing to main. The release workflow tests Lua 5.1 and 5.4, builds and validates the ZIP and release metadata, and publishes a new release without overwriting an existing version. It runs on changes to the TOC on main, or manually from Actions > Publish Forever release. The ZIP contains only the Lua, TOC and BLP files under the addon folder; settings, tests and metadata are excluded. The 64×64 BLP2 custom icon and Professions category are unchanged.
 
 Official guide: https://wowup.io/guide/get-addons/overview
 

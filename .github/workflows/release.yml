@@ -17,7 +17,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install Lua
-        run: sudo apt-get update && sudo apt-get install -y lua5.1 lua5.4 zip
+        run: sudo apt-get update && sudo apt-get install -y lua5.1 lua5.4 zip jq
       - name: Validate and test
         run: |
           set -eu
@@ -33,7 +33,19 @@ jobs:
           version=$(sed -n 's/^## Version: //p' AutoEnchanter/AutoEnchanter.toc | tr -d '\r')
           printf '%s\n' "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'
           tag="v$version"
-          asset="AutoEnchanter-$version-forever.zip"
+          asset="AutoEnchanter-$version.zip"
+          interface=$(sed -n 's/^## Interface: //p' AutoEnchanter/AutoEnchanter.toc | tr -d '\r')
+          printf '%s\n' "$interface" | grep -Eq '^[0-9]+
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "Release $tag already exists; bump the version for a new release."
+            exit 0
+          fi
+          zip -X "$asset" AutoEnchanter/AutoEnchanter.lua AutoEnchanter/AutoEnchanter.toc AutoEnchanter/AutoEnchanterIcon.blp
+          unzip -t "$asset"
+          jq -n --arg filename "$asset" --argjson interface "$interface" '{releases:[{filename:$filename,nolib:false,metadata:[{flavor:"forever",interface:$interface}]}]}' > release.json
+          jq -e --arg filename "$asset" --argjson interface "$interface" '.releases | any(.filename == $filename and .nolib == false and (.metadata | any(.flavor == "forever" and .interface == $interface)))' release.json
+          gh release create "$tag" "$asset" release.json --target "$GITHUB_SHA" --title "AutoEnchanter $version" --generate-notes
+
           if gh release view "$tag" >/dev/null 2>&1; then
             echo "Release $tag already exists; bump the version for a new release."
             exit 0
