@@ -37,7 +37,8 @@ function G:Refresh()
     if type(n)~="number" or n<1 or n>10000 or n%1~=0 or type(own)~="string" or type(GetGuildRosterInfo)~="function" then return end
     local nextMembers={}
     for i=1,n do
-        local ok,name,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,guid=pcall(GetGuildRosterInfo,i)
+        local values={pcall(GetGuildRosterInfo,i)}
+        local ok,name,guid=values[1],values[2],values[18]
         if not ok or not readable(name) or not readable(guid) or type(name)~="string" or type(guid)~="string" or guid=="" then return end
         nextMembers[guid]=true
     end

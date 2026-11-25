@@ -46,9 +46,11 @@ function R:Init(ledger)
     end
 end
 function R:Begin() self.queue={} end
-function R:End()
+function R:End(visit,guid)
     local queue=self.queue or {}; self.queue=nil
+    self.synchronousVisit,self.synchronousGUID=visit,guid
     for _,msg in ipairs(queue) do self:Handle(msg) end
+    self.synchronousVisit,self.synchronousGUID=nil,nil
 end
 function R:Handle(msg)
     if not readable(msg) or type(msg)~="string" or not self.ledger or not self.ledger.ready then return end
@@ -64,8 +66,14 @@ function R:Handle(msg)
     end
     -- A nameless busy result cannot be linked reliably; invalidate sent
     -- evidence rather than attributing a decline to a potentially unavailable player.
-    for _,constant in ipairs({"ERR_ALREADY_INVITED_TO_GROUP","ERR_ALREADY_IN_GROUP","ERR_PLAYER_BUSY","ERR_GROUP_FULL","ERR_INVITE_PLAYER"}) do
-        local v=_G[constant]
-        if readable(v) and type(v)=="string" and cleaned==clean(v) then self.ledger:InvalidateSent(); return end
+    for _,entry in ipairs({{"ERR_ALREADY_INVITED_TO_GROUP","busy"},{"ERR_ALREADY_IN_GROUP","already_grouped"},{"ERR_PLAYER_BUSY","busy"},{"ERR_GROUP_FULL","failed"}}) do
+        local v=_G[entry[1]]
+        if readable(v) and type(v)=="string" and cleaned==clean(v) then
+            local visit,guid=self.synchronousVisit,self.synchronousGUID
+            local p=visit and self.ledger.pending[visit.id]
+            if p and p.guid==guid then self.ledger:Resolve(p,entry[2],self.ledger:Now(),"synchronous unnamed game result"); self.ledger:Schedule()
+            else self.ledger:InvalidateSent() end
+            return guid
+        end
     end
 end

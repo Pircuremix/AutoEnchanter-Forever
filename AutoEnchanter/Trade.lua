@@ -61,7 +61,9 @@ function T:Finish(s,confirmed,reason)
         local tip=0
         if x.incoming>0 and x.outgoing==0 and not x.itemsIn and not x.itemsOut and not x.receivedEnchant and not x.currency then tip=x.incoming end
         self.ledger:AddTrade(s.guid,s.visit,{at=self.ledger:Now(),copper=tip,enchants=x.givenEnchant and 1 or 0,
-            incoming=x.incoming,outgoing=x.outgoing,reason="explicit trade completion",unverified=false})
+            incoming=x.incoming,outgoing=x.outgoing,reason="explicit trade completion",unverified=false,
+            exchanged=x.incoming>0 or x.outgoing>0 or x.itemsIn or x.itemsOut or x.givenEnchant or x.receivedEnchant or x.currency,
+            guild=s.guild})
         self.stats.confirmed=self.stats.confirmed+1
     else
         self.stats.unverified=self.stats.unverified+1
@@ -84,7 +86,7 @@ function T:Event(event,...)
         local guid=value(UnitGUID,"npc")
         local v=self.ledger:Active(guid)
         if not v then return end
-        self.current={guid=guid,visit=v,accepted=false,closed=false,ambiguous=ambiguous}
+        self.current={guid=guid,visit=v,accepted=false,closed=false,ambiguous=ambiguous,guild=ns.Guild:Membership(guid)}
         self:Snapshot(self.current)
         return
     end

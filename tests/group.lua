@@ -87,7 +87,7 @@ local function reset(saved)
         end}
     AutoEnchanterDB=saved or {whitelist={"LF enchant crusader"},enabled=true,debug=false,popupEnabled=true}
     ns={}
-    for _,file in ipairs({"Database.lua","Trade.lua","Group.lua","Settings.lua","Dashboard.lua","Minimap.lua","AutoEnchanter.lua"}) do assert(loadfile("AutoEnchanter/"..file))("AutoEnchanter",ns) end
+    for _,file in ipairs({"CustomerPolicy.lua","Guild.lua","InviteResults.lua","Performance.lua","Database.lua","Trade.lua","Group.lua","Settings.lua","Dashboard.lua","Minimap.lua","AutoEnchanter.lua"}) do assert(loadfile("AutoEnchanter/"..file))("AutoEnchanter",ns) end
     fire("ADDON_LOADED","AutoEnchanter"); fire("PLAYER_LOGIN"); fire("PLAYER_ENTERING_WORLD")
 end
 local function cmd(s) SlashCmdList.AUTOENCHANTER(s) end

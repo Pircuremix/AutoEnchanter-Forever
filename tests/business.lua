@@ -19,13 +19,14 @@ function GetTradeTargetItemInfo(i) local x=targetItems[i] or {}; return x.name,x
 GetTradePlayerItemInfo=GetPlayerTradeItemInfo; GetTradeTargetItemInfo=GetTradeTargetItemInfo
 function GetTargetTradeCurrency() return currency end
 local ns={}
-for _,f in ipairs({"Database.lua","Trade.lua","Dashboard.lua","Minimap.lua"}) do assert(loadfile("AutoEnchanter/"..f))("AutoEnchanter",ns) end
+for _,f in ipairs({"CustomerPolicy.lua","Guild.lua","InviteResults.lua","Performance.lua","Database.lua","Trade.lua","Dashboard.lua","Minimap.lua"}) do assert(loadfile("AutoEnchanter/"..f))("AutoEnchanter",ns) end
 local D,T,U,M=ns.Database,ns.Trade,ns.Dashboard,ns.Minimap
 local db
 local function reset(saved)
     epoch,own,roster,timers,secret,partner=1700000000,"self",{}, {},{},"a"
     incoming,outgoing,playerItems,targetItems,currency,logs=0,0,{},{},0,{}
     db=saved or {enabled=true,debug=false,whitelist={}}
+    ns.Guild:Init(db,function() end); ns.Guild.ready=true; ns.InviteResults:Init(D)
     D:Init(db,function(s) logs[#logs+1]=s end); T:Init(D,function(s) logs[#logs+1]=s end)
     D:OnRoster()
 end
@@ -43,7 +44,7 @@ join("a"); D:OnRoster(); check("accept once",a.status=="accepted" and row("a").a
 check("records independent of welcome settings",D:Active("a")==a)
 local b=add("b","Bob Oak"); D:Decline("Bob Oak declines your group invitation.")
 check("localized decline",b.status=="declined" and row("b").declined==1)
-local c=add("c"); epoch=epoch+120; D:Expire(); check("expiry included in declines",c.status=="expired" and row("c").declined==1)
+local c=add("c"); c.sentConfirmed=true; epoch=epoch+120; D:Expire(); check("confirmed expiry included in declines",c.status=="expired" and row("c").declined==1)
 local x=add("d"); epoch=epoch+8; local y=add("d"); join("d")
 check("overlap accepted once, prior superseded",x.status=="superseded" and y.status=="accepted" and row("d").accepted==1 and row("d").other==1)
 local f=D:Record("Failed","failed","failed",false); check("failure excluded from declined",f.status=="failed" and row("failed").declined==0)
