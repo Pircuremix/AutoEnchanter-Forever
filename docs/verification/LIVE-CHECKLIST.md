@@ -1,12 +1,13 @@
-# Live acceptance checklist — v1.6.1
+# Live acceptance checklist — v1.6.2
 
 Status: **not yet verified in the live client**. Use consenting test players, back up SavedVariables, and record the installed version/client build from /ae diagnostics. Keep names, GUIDs, account data and trade/chat logs private. Use debug for dry runs, then turn debug off only for controlled live tests.
 
 | Area | Test | Expected |
 |---|---|---|
-| Installation | WowUp refresh/update, restart WoW, /ae diagnostics | 1.6.1; whitelist and settings preserved |
+| Installation | WowUp refresh/update, restart WoW, /ae diagnostics | 1.6.2; whitelist and settings preserved |
 | Dashboard | Minimap left/right/Shift-left, Settings and Blacklist tabs, search/sort | Correct interaction; EllesmereUI Free Move off for Shift-left |
 | Matching | Valid whitelist requests, wrong phrases, full surnames, General/Trade | Only exact normalized matches; correct native invite |
+| Manual invite | Right-click and /invite, no whitelist match; accept and complete trade; repeat AE off/debug | Single manual visit, verified GUID trade totals; no new visit off/debug |
 | Acceptance | Accepted invite, repeated roster events | One accepted record and normal configured welcome |
 | Decline | Explicit decline, repeat request during cooldown | Verified decline, 30-minute suppression |
 | Availability | Already grouped, busy/pending invite, unnamed async failure | Separate grouped/busy where attributable; never a decline from ambiguous evidence |
@@ -32,4 +33,4 @@ The long-duration 30/90/180-day penalties and 10-day repeat decline bans are cov
 - Redacted diagnostics:
 - Date tested:
 
-Save live observations separately, e.g. verification/live-v1.6.1.md. Update the verification index only after results are observed.
+Save live observations separately, e.g. verification/live-v1.6.2.md. Update the verification index only after results are observed.

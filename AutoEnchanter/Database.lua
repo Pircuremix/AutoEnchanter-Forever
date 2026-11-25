@@ -26,7 +26,7 @@ function D:Init(db,log)
     if type(l)=="table" and l.schema==1 and type(l.customers)=="table" then l.schema=2 end
     self.ready=type(l)=="table" and l.schema==2 and type(l.customers)=="table" and integer(l.nextID) and l.nextID>=1
     self.ledger=self.ready and l or nil
-    self.pending,self.active,self.pendingKeys={},{},{}
+    self.pending,self.active,self.pendingKeys,self.manualNames={},{},{},{}
     self.activeOwner=nil
     self.revision=0; self.timerGeneration=0; self.timerAt=nil
     if not self.ready then log("Customer ledger schema unsupported; preserved without modification."); policy:Init(self); return end
@@ -37,6 +37,7 @@ function D:Init(db,log)
                 if type(v)=="table" and integer(v.id) and integer(v.invited) and text(v.owner) then
                     l.nextID=math.max(l.nextID,v.id+1)
                     if v.status=="pending" then self.pending[v.id]={guid=guid,visit=v}; local k=v.owner..":"..guid; self.pendingKeys[k]=(self.pendingKeys[k] or 0)+1
+                        if v.source=="manual" and text(v.name) then self:IndexManual(v,1) end
                     end
                 end
             end
@@ -66,6 +67,27 @@ function D:Schedule()
         if self.timerGeneration==generation then self.timerAt=nil; self:Expire() end
     end)
 end
+function D:IndexManual(v,delta)
+    if v.source~="manual" or not text(v.name) then return end
+    local key=v.owner..":"..namekey(v.name)
+    local n=(self.manualNames[key] or 0)+delta
+    self.manualNames[key]=n>0 and n or nil
+end
+function D:HasManualName(key,own)
+    return type(own)=="string" and type(key)=="string" and (self.manualNames[own..":"..key] or 0)>0 or false
+end
+function D:FindPendingName(name,normalize)
+    local own=owner()
+    local match,guid
+    for _,p in pairs(self.pending) do
+        if p.visit.owner==own and normalize(p.visit.name)==name then
+            if guid and guid~=p.guid then return nil,true end
+            guid=p.guid
+            if not match or match.visit.id<p.visit.id then match=p end
+        end
+    end
+    return match,false
+end
 function D:Resolve(p,status,now,reason)
     local v=p.visit
     if v.status~="pending" then return end
@@ -73,7 +95,8 @@ function D:Resolve(p,status,now,reason)
     self.pending[v.id]=nil
     local key=v.owner..":"..p.guid; local count=(self.pendingKeys[key] or 1)-1
     self.pendingKeys[key]=count>0 and count or nil
-    policy:Outcome(p.guid,v,status,now)
+    self:IndexManual(v,-1)
+    if not v.identityUnverified then policy:Outcome(p.guid,v,status,now) end
     self:Touch()
 end
 function D:Expire()
@@ -88,13 +111,14 @@ function D:Expire()
     end
     self:Schedule()
 end
-function D:Record(name,guid,status,trackable,guild,whisper)
+function D:Record(name,guid,status,trackable,guild,whisper,source,sentConfirmed)
     if not self.ready or not self.db.enabled or self.db.debug then return end
     local now,own=clock(),owner()
     if not integer(now) or not text(own) or not text(name) then return end
     local validGUID=text(guid)
     -- Unknown identity is recorded separately, never used to attach trades.
-    local key=validGUID and guid or ("unknown:"..namekey(name))
+    local manual=source=="manual"
+    local key=validGUID and guid or ((manual and "manual:" or "unknown:")..namekey(name))
     local c=self.ledger.customers[key]
     if not c then c={name=name,visits={}}; self.ledger.customers[key]=c end
     if type(c)~="table" or type(c.visits)~="table" then return end
@@ -106,19 +130,66 @@ function D:Record(name,guid,status,trackable,guild,whisper)
     end
     local v={id=self.ledger.nextID,name=name,owner=own,enchanter=first and (realm and first.." "..realm or first) or own,
         invited=now,localTime=localstamp(now),status=status or "pending",tipCopper=0,enchants=0,trades={},unverified=0,
-        policyEligible=true,guildAtInvite=guild,guildWhisper=whisper}
+        policyEligible=not (manual and not validGUID),guildAtInvite=guild,guildWhisper=whisper,
+        source=manual and "manual" or "auto",identityUnverified=manual and not validGUID or nil,sentConfirmed=sentConfirmed or nil}
     self.ledger.nextID=v.id+1
     c.visits[#c.visits+1]=v
-    if v.status=="pending" and (not validGUID or not trackable) then v.status="unverified"; v.reason="identity or prior membership unavailable" end
+    if v.status=="pending" and not (manual and not validGUID) and (not validGUID or not trackable) then v.status="unverified"; v.reason="identity or prior membership unavailable" end
     if v.status=="pending" then
-        self.pending[v.id]={guid=guid,visit=v}
-        local pk=own..":"..guid; self.pendingKeys[pk]=(self.pendingKeys[pk] or 0)+1
+        self.pending[v.id]={guid=key,visit=v}
+        local pk=own..":"..key; self.pendingKeys[pk]=(self.pendingKeys[pk] or 0)+1
+        self:IndexManual(v,1)
         -- Only the latest outstanding request can receive one acceptance.
         self:Expire()
-        if safe(C_PartyInfo and C_PartyInfo.IsGUIDInGroup,guid)==true then self:OnRoster() end
-    else v.resolved=now; policy:Outcome(key,v,v.status,now) end
+        if (validGUID and safe(C_PartyInfo and C_PartyInfo.IsGUIDInGroup,guid)==true) or (manual and not validGUID) then self:OnRoster() end
+    else v.resolved=now; if not v.identityUnverified then policy:Outcome(key,v,v.status,now) end end
     self:Touch()
     return v
+end
+-- Only exact full-name matches in the observable ordinary home roster.
+-- A name-only attempt remains a separate historical row unless this visit joins.
+local function rosterNames(own)
+    if LE_PARTY_CATEGORY_INSTANCE==nil or safe(IsInGroup,LE_PARTY_CATEGORY_INSTANCE)~=false or safe(IsInGroup)~=true then return {} end
+    local raid,n=safe(IsInRaid),safe(GetNumGroupMembers)
+    if type(raid)~="boolean" or not integer(n) or n<2 or n>(raid and 40 or 5) then return {} end
+    local out={}
+    for i=1,raid and n or n-1 do
+        local unit=raid and ("raid"..i) or ("party"..i)
+        local guid=safe(UnitGUID,unit)
+        if text(guid) and guid~=own and type(UnitFullName)=="function" then
+            local ok,first,surname=pcall(UnitFullName,unit)
+            if ok and text(first) and readable(surname) then
+                local full=first
+                if text(surname) and not first:find("[ %-]") then full=first.." "..surname end
+                local k=namekey(full)
+                if out[k] and out[k].guid~=guid then out[k]={ambiguous=true}
+                elseif not out[k] then out[k]={guid=guid,name=full} end
+            end
+        end
+    end
+    return out
+end
+function D:BindManual(p,guid,full)
+    local v=p.visit
+    if not v.identityUnverified or not text(guid) then return false end
+    local old=self.ledger.customers[p.guid]
+    local target=self.ledger.customers[guid]
+    if not old or type(old.visits)~="table" or (target and type(target.visits)~="table") then return false end
+    local index
+    for i,item in ipairs(old.visits) do if item==v then index=i; break end end
+    if not index then return false end
+    if not target then target={name=full,visits={}}; self.ledger.customers[guid]=target end
+    table.remove(old.visits,index)
+    if #old.visits==0 then self.ledger.customers[p.guid]=nil end
+    local oldKey=v.owner..":"..p.guid; local n=(self.pendingKeys[oldKey] or 1)-1
+    self.pendingKeys[oldKey]=n>0 and n or nil
+    p.guid=guid
+    local pk=v.owner..":"..guid; self.pendingKeys[pk]=(self.pendingKeys[pk] or 0)+1
+    -- The original name is kept for index removal and historical display.
+    target.name=full; target.visits[#target.visits+1]=v
+    v.identityUnverified=nil; v.policyEligible=true
+    v.guildAtInvite=ns.Guild:Membership(guid)
+    return true
 end
 function D:OnRoster()
     if not self.ready then return end
@@ -141,8 +212,14 @@ function D:OnRoster()
     end
     local check=C_PartyInfo and C_PartyInfo.IsGUIDInGroup
     local newest={}
+    local names
     for _,p in pairs(self.pending) do
-        if p.visit.owner==own and safe(check,p.guid)==true then
+        if p.visit.owner==own and p.visit.identityUnverified and p.visit.source=="manual" then
+            names=names or rosterNames(own)
+            local member=names[namekey(p.visit.name)]
+            if member and not member.ambiguous and safe(check,member.guid)==true then self:BindManual(p,member.guid,member.name) end
+        end
+        if p.visit.owner==own and not p.visit.identityUnverified and safe(check,p.guid)==true then
             local old=newest[p.guid]
             if not old or old.visit.id<p.visit.id then newest[p.guid]=p end
         end
@@ -150,6 +227,7 @@ function D:OnRoster()
     for guid,p in pairs(newest) do
         local old=self.active[guid]
         if old and not old.closed then old.closed=now; policy:Close(guid,old,true) end
+        if p.visit.source=="manual" and p.visit.guildAtInvite==nil then p.visit.guildAtInvite=ns.Guild:Membership(guid) end
         self:Resolve(p,"accepted",now)
         self.active[guid]=p.visit
         -- Earlier overlapping requests cannot be independently resolved.
@@ -157,6 +235,7 @@ function D:OnRoster()
         for _,other in pairs(self.pending) do
             if other.guid==guid and other.visit.owner==own then self:Resolve(other,"superseded",now,"overlapping invite; acceptance attributed to latest") end
         end
+        if p.visit.source=="manual" and ns.Group then ns.Group:TrackInvite(p.visit.name,guid) end
     end
     for guid,v in pairs(self.active) do
         if v.owner~=own or safe(check,guid)==false then
@@ -170,15 +249,9 @@ function D:NamedResult(name,status,normalize)
     local now,own=clock(),owner()
     if not integer(now) or not text(own) then return end
     self:Expire()
-    local match,guid
-    for _,p in pairs(self.pending) do
-        if p.visit.owner==own and normalize(p.visit.name)==name then
-            if guid and guid~=p.guid then return end
-            guid=p.guid
-            if not match or match.visit.id<p.visit.id then match=p end
-        end
-    end
-    if not match then return end
+    local match,ambiguous=self:FindPendingName(name,normalize)
+    if ambiguous or not match then return end
+    local guid=match.guid
     if status=="sent" then
         match.visit.sentConfirmed=true; self:Touch()
     else
@@ -246,10 +319,11 @@ function D:Rows(since)
     self:Expire()
     for guid,c in pairs(self.ledger.customers) do
         if type(c)=="table" and type(c.visits)=="table" then
-            local r={guid=guid,name=c.name or guid,accepted=0,declined=0,pending=0,other=0,grouped=0,busy=0,noTrade=0,tip=0,enchants=0,last=0,visits={}}
+            local r={guid=guid,name=c.name or guid,accepted=0,declined=0,pending=0,other=0,grouped=0,busy=0,noTrade=0,manual=0,auto=0,tip=0,enchants=0,last=0,visits={}}
             for _,v in ipairs(c.visits) do
                 if type(v)=="table" and integer(v.invited) and (not since or v.invited>=since) then
                     r.visits[#r.visits+1]=v
+                    if v.source=="manual" then r.manual=r.manual+1 else r.auto=r.auto+1 end
                     if v.status=="accepted" then r.accepted=r.accepted+1
                     elseif v.status=="declined" or (v.status=="expired" and v.sentConfirmed==true) then r.declined=r.declined+1
                     elseif v.status=="already_grouped" then r.grouped=r.grouped+1
@@ -275,17 +349,17 @@ function D:Rows(since)
 end
 function D:Delete(guid)
     if not self.ready or not self.ledger.customers[guid] then return end
-    for id,p in pairs(self.pending) do if p.guid==guid then self.pendingKeys[p.visit.owner..":"..guid]=nil; self.pending[id]=nil end end
+    for id,p in pairs(self.pending) do if p.guid==guid then self:IndexManual(p.visit,-1); self.pendingKeys[p.visit.owner..":"..guid]=nil; self.pending[id]=nil end end
     self.active[guid]=nil; policy.settling[guid]=nil; self.ledger.customers[guid]=nil; self:Touch(); self:Schedule()
 end
 function D:Reset()
     if not self.ready then return end
-    self.ledger.customers={}; self.pending,self.active,self.pendingKeys={},{},{}; policy.settling={}; self:Touch(); self:Schedule()
+    self.ledger.customers={}; self.pending,self.active,self.pendingKeys,self.manualNames={},{},{},{}; policy.settling={}; self:Touch(); self:Schedule()
 end
 function D:Now() return clock() end
 function D:Stamp(t) return localstamp(t) end
 function D:Status()
-    local rows=self:Rows(); local visits=0
-    for _,r in ipairs(rows) do visits=visits+#r.visits end
-    self.log(("Ledger: %d customers; %d invitations; schema=%s"):format(#rows,visits,self.ready and "2" or "unavailable"))
+    local rows=self:Rows(); local visits,manual=0,0
+    for _,r in ipairs(rows) do visits=visits+#r.visits; manual=manual+r.manual end
+    self.log(("Ledger: %d customers; %d invitations (%d manual/external, %d automatic); schema=%s"):format(#rows,visits,manual,visits-manual,self.ready and "2" or "unavailable"))
 end

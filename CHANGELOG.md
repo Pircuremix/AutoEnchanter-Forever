@@ -10,6 +10,13 @@ Post-release test evidence is maintained under [docs/verification/](docs/verific
 - Recorded v1.6.0 publication evidence, benchmark results, the resolved intermediate TOC failure, and outstanding live acceptance checks.
 - Updated contributor workflow to keep new modules and TOC entries together. No runtime or package changes.
 
+## 1.6.2 — Manual invitation accounting
+
+- Track manual/external native invites while AE is enabled and not debugging; include accepted services, tips, enchants, welcome, marker and policies in the same ledger.
+- Identify manual vs automatic visits in dashboard and export; retain uncertain name-only outcomes without imposing identity-based penalties.
+- Avoid duplicate auto requests while an observed manual invite is pending. Keep native manual invites independent of automatic blacklist enforcement.
+- See [manual invite guide](docs/MANUAL-INVITES.md) and [version notes](docs/releases/v1.6.2.md).
+
 ## 1.6.1 — Dynamic welcome messages
 
 - Added case-insensitive welcome placeholders CUSTOMER, PLAYER, ZONE, MARKER and MARKER_NAME.

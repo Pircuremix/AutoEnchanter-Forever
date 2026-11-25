@@ -1,4 +1,4 @@
--- AutoEnchanter Forever 1.6.1 (release candidate)
+-- AutoEnchanter Forever 1.6.2 (release candidate)
 -- Normalized matching: ignores filler words, punctuation, spaces, and "Xg" / "X gold" patterns
 local ADDON = "Auto Enchanter"
 local addonName, ns = ...
@@ -397,7 +397,7 @@ end
 
 -- Native invite only. A successful Lua call is not server confirmation.
 local lastAttempt, lastAttemptTime, inviteBlocked, inviteInFlight
-local function DoInvite(playerName, guid, start)
+local function DoInvite(playerName, guid, start, nameKey)
     if db.debug then
         stats.simulated = stats.simulated + 1
         printSys("DEBUG: would have invited " .. playerName)
@@ -409,7 +409,7 @@ local function DoInvite(playerName, guid, start)
         return
     end
     local memberGuild=guild:Membership(guid)
-    if not policy:Allow(guid,memberGuild) or ledger:HasPending(guid,ownGUID) then stats.skipped=stats.skipped+1; return end
+    if not policy:Allow(guid,memberGuild) or ledger:HasPending(guid,ownGUID) or ledger:HasManualName(nameKey,ownGUID) then stats.skipped=stats.skipped+1; return end
     local party = C_PartyInfo
     local trackable = false
     if party and party.IsGUIDInGroup and readable(guid) and type(guid) == "string" and guid ~= "" then
@@ -444,7 +444,7 @@ local function DoInvite(playerName, guid, start)
     end
     lastAttempt, lastAttemptTime = playerName, GetTime()
     stats.attempted = stats.attempted + 1
-    results:Begin()
+    results:Begin(playerName)
     inviteInFlight = true
     local stop=performance:Start()
     local ok, result = pcall(invite, playerName)
@@ -498,7 +498,7 @@ local function FastChatHandler(event, ...)
     if whitelistLookup[normalizedMsg] then
         stats.matches = stats.matches + 1
         if CanInviteNow(key) then
-            DoInvite(author, guid, start)
+            DoInvite(author, guid, start, key)
         else
             stats.skipped = stats.skipped + 1
             if db.debug then AE_Debug("Invite suppressed by cooldown for " .. author) end
@@ -508,6 +508,7 @@ local function FastChatHandler(event, ...)
     end
     end
     end
+    results:Remember(author,guid)
     PruneCaches(now)
     -- Learning remains available while invites are disabled.
     if db.popupEnabled then
@@ -604,7 +605,7 @@ SlashCmdList["AUTOENCHANTER"] = function(msg)
     end
     if cmd == "diagnostics" or cmd == "diag" then
         local version, build, _, interface = GetBuildInfo()
-        printSys(("Version 1.6.1; client=%s build=%s interface=%s"):format(tostring(version), tostring(build), tostring(interface)))
+        printSys(("Version 1.6.2; client=%s build=%s interface=%s"):format(tostring(version), tostring(build), tostring(interface)))
         local party = C_PartyInfo or {}
         printSys(("InviteUnit=%s CanInvite=%s IsPartyFull=%s IsGUIDInGroup=%s"):format(type(party.InviteUnit), type(party.CanInvite), type(party.IsPartyFull), type(party.IsGUIDInGroup)))
         printSys(("Menu.ModifyMenu=%s issecretvalue=%s; automatic invites blocked=%s"):format(type(Menu and Menu.ModifyMenu), type(issecretvalue), tostring(inviteBlocked == true)))
@@ -782,11 +783,12 @@ frame:SetScript("OnEvent", function(self, event, ...)
     elseif event == "PLAYER_LOGIN" then
         if not db then InitDB() end
         RefreshIdentity()
-        printSys("Loaded 1.6.1. ENABLED=" .. (db.enabled and "ON" or "OFF") .. "; DEBUG=" .. (db.debug and "ON" or "OFF") .. "; popup=" .. (db.popupEnabled and "ON" or "OFF"))
+        printSys("Loaded 1.6.2. ENABLED=" .. (db.enabled and "ON" or "OFF") .. "; DEBUG=" .. (db.debug and "ON" or "OFF") .. "; popup=" .. (db.popupEnabled and "ON" or "OFF"))
         InitModernMenus()
         options:Init(group, printSys)
         minimap:Init(db,dashboard,printSys)
         guild:Request()
+        results:InstallManualHooks()
         self:UnregisterEvent("PLAYER_LOGIN")
     elseif event == "PLAYER_ENTERING_WORLD" then
         RefreshIdentity()

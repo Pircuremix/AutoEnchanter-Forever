@@ -4,6 +4,7 @@ Each release has a dedicated file used as the GitHub release body for v1.4.0 onw
 
 | Version | Notes |
 |---|---|
+| 1.6.2 | [Manual invitation accounting](v1.6.2.md) |
 | 1.6.1 | [Dynamic welcome messages](v1.6.1.md) |
 | 1.6.0 | [Smart Customer Protection](v1.6.0.md) |
 | 1.5.0 | [Customer database and business dashboard](v1.5.0.md) |

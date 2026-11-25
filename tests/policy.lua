@@ -65,6 +65,12 @@ local function reset(saved)
             elseif behavior=="unknown" then
             else fire("CHAT_MSG_SYSTEM","You have invited "..name.." to join your group.") end
         end}
+    -- Mock secure post-hook (not a runtime replacement in the addon).
+    hooksecurefunc=function(obj,method,callback)
+        local original=obj[method]
+        obj[method]=function(...) original(...); callback(...) end
+    end
+    C_PartyInfo.ConfirmInviteUnit=function(name) C_PartyInfo.InviteUnit(name) end
     AutoEnchanterDB=saved or {whitelist={"LF enchant crusader"},enabled=true,debug=false,popupEnabled=true,welcomeEnabled=true,welcomeMessage="Normal welcome"}
     ns={}
     for _,file in ipairs({"CustomerPolicy.lua","Guild.lua","InviteResults.lua","Performance.lua","Database.lua","Trade.lua","Group.lua","Settings.lua","Dashboard.lua","Minimap.lua","AutoEnchanter.lua"}) do assert(loadfile("AutoEnchanter/"..file))("AutoEnchanter",ns) end
@@ -145,6 +151,45 @@ reset(); guilded=true; guildMembers={"self","a"}; fire("PLAYER_GUILD_UPDATE"); f
 check("blocked guild whisper independent of welcome",G.failures==1 and messages[2].msg=="Normal welcome" and ns.Group.chatBlocked==false)
 reset(); local saved=AutoEnchanterDB; saved.customerLedger={schema=1,nextID=3,customers={a={name="a",visits={{id=1,owner="self",invited=1700000000,status="expired",tipCopper=0,enchants=0},{id=2,owner="self",invited=1700000000,status="accepted",tipCopper=100,enchants=1,closed=1700000001}}}}}
 reset(saved); p=P:Get("a"); check("schema migration preserves history and excludes legacy expiration",saved.customerLedger.schema==2 and p.declines==0 and p.accepted==1 and p.tips==100)
+-- Manual native invitations; the same policy ledger handles accepted service.
+reset(); C_PartyInfo.InviteUnit("a")
+check("manual invite observed before roster",D.ledger.customers["manual:a"].visits[1].source=="manual" and D.ledger.customers["manual:a"].visits[1].status=="pending")
+check("manual invite does not add auto performance call",ns.Performance.count==0)
+join("a")
+check("manual name bound to observed GUID and accepted once",visit("a").status=="accepted" and visit("a").source=="manual" and not D.ledger.customers["manual:a"] and P:Get("a").accepted==1)
+check("manual customer normal welcome exactly once",#messages==1 and messages[1].msg=="Normal welcome")
+fire("GROUP_ROSTER_UPDATE"); check("manual roster duplicate ignored",#messages==1 and #D.ledger.customers.a.visits==1)
+service("a",10000,1,true,false); leave()
+check("manual trade tip and enchant counted",visit("a").tipCopper==10000 and visit("a").enchants==1 and P:Get("a").tips==10000)
+reset(); C_PartyInfo.InviteUnit("a"); chat("a")
+check("auto suppressed while name-only manual invite pending",#invites==1)
+decline("a"); check("manual name-only decline counted without ban",D.ledger.customers["manual:a"].visits[1].status=="declined" and not P:Restriction("manual:a",false))
+reset(); fire("CHAT_MSG_CHANNEL","Unmatched message","a","Common","Trade","","",2,7,"Trade",1,1,"a"); C_PartyInfo.InviteUnit("a"); decline("a")
+check("manual known GUID decline same protection",visit("a").source=="manual" and visit("a").status=="declined" and P:Get("a").cooldownUntil==epoch+1800)
+reset(); behavior="grouped"; C_PartyInfo.InviteUnit("a")
+check("manual grouped result distinct",D.ledger.customers["manual:a"].visits[1].status=="already_grouped")
+reset(); behavior="busy"; C_PartyInfo.InviteUnit("a")
+check("manual busy result distinct",D.ledger.customers["manual:a"].visits[1].status=="busy")
+reset(); C_PartyInfo.InviteUnit("a"); C_PartyInfo.ConfirmInviteUnit("a"); advance(0)
+check("confirmation and duplicate sent event do not duplicate visit",#D.ledger.customers["manual:a"].visits==1)
+reset(); chat("a"); advance(0); join("a")
+check("auto hook never creates manual duplicate",visit("a").source=="auto" and #D.ledger.customers.a.visits==1 and not D.ledger.customers["manual:a"])
+reset(); SlashCmdList.AUTOENCHANTER("off"); C_PartyInfo.InviteUnit("a"); advance(0); join("a")
+check("manual invite while disabled not tracked",not next(D.ledger.customers))
+reset(); SlashCmdList.AUTOENCHANTER("debug on"); C_PartyInfo.InviteUnit("a"); advance(0); join("a")
+check("manual invite while debug not tracked",not next(D.ledger.customers))
+reset(); join("a"); check("unrelated roster member not a customer",not next(D.ledger.customers))
+reset(); fire("CHAT_MSG_SYSTEM","You have invited a to join your group."); advance(0); join("a")
+check("sent message fallback without hook observation",visit("a").source=="manual" and visit("a").status=="accepted" and R.manualFallback==1)
+reset(); C_PartyInfo.InviteUnit("a"); advance(120)
+check("confirmed name-only expiry recorded, no policy penalty",D.ledger.customers["manual:a"].visits[1].status=="expired" and not P:Restriction("manual:a",false))
+reset(); C_PartyInfo.InviteUnit("a"); join("a"); leave()
+check("manual no-trade departure receives same cooldown",P:Get("a").noTrade==1 and P:Get("a").cooldownUntil==epoch-5+1800)
+reset(); guilded=true; guildMembers={"self","a"}; fire("PLAYER_GUILD_UPDATE"); fire("GUILD_ROSTER_UPDATE"); fire("CHAT_MSG_CHANNEL","Unmatched message","a","Common","Trade","","",2,7,"Trade",1,1,"a")
+C_PartyInfo.InviteUnit("a"); advance(0); join("a"); service("a",0,1,true,true); leave()
+check("known guild manual invite whisper and exemption",messages[1].channel=="WHISPER" and messages[2].channel=="PARTY" and P:Get("a").freeEnchants==1 and P:Get("a").dayCount==0)
+reset(); C_PartyInfo.InviteUnit("a"); local saved=AutoEnchanterDB; reset(saved); join("a")
+check("saved manual pending reconciled after reload",visit("a").source=="manual" and visit("a").status=="accepted")
 -- Actual hot-path benchmark, mock native API. Preexisting history lookup by GUID;
 -- synchronous grouped result avoids building thousands of active requests.
 for _,n in ipairs({1000,10000,50000}) do

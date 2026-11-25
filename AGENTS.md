@@ -23,6 +23,10 @@ Read docs/CUSTOMER-POLICY.md, INVITE-OUTCOMES.md and PERFORMANCE.md. Never class
 
 Read docs/WELCOME-MESSAGES.md. Expand only after observed acceptance and optional marking. Actual readable self-marker, never configured preference; preserve existing marks and native chat restrictions. Case-insensitive single-pass substitution, unknown tokens preserved, expanded 255-byte cap. Local previews never send chat or change group state. No work added to pre-invite path.
 
+## Manual invitation invariants (1.6.2)
+
+Read docs/MANUAL-INVITES.md. Observe native calls without replacing protected APIs or issuing duplicate invitations; distinguish auto queue from external callers. No new tracking when disabled/debug. Do not count arbitrary roster joins, assume a name-only identity, or punish unresolved identities. Manual invitations bypass automatic restrictions; verified outcomes update the shared customer history. Keep manual pending name index coherent across resolve/delete/reset/reload. Only one accepted visit per customer join. Do not compromise native invite latency.
+
 ## Implementation workflow
 
 1. Check the exact current branch, API source for the Forever client, and existing tests. Update docs/ARCHITECTURE.md if contracts or modules change.

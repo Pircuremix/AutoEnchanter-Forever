@@ -55,20 +55,20 @@ end
 function D:Select(guid) self.selected=guid; self.visitPage=1; self.confirm=nil; self:Refresh() end
 function D:Sort(k) if self.sort==k then self.desc=not self.desc else self.sort=k; self.desc=k~="name" end; self.page=1; self:Refresh() end
 function D:Summary(rows)
-    local s={tip=0,enchants=0,accepted=0,declined=0,pending=0,other=0,repeatCustomers=0,grouped=0,busy=0,noTrade=0}
+    local s={tip=0,enchants=0,accepted=0,declined=0,pending=0,other=0,repeatCustomers=0,grouped=0,busy=0,noTrade=0,manual=0,auto=0}
     for _,r in ipairs(rows) do
-        for _,k in ipairs({"tip","enchants","accepted","declined","pending","other","grouped","busy","noTrade"}) do s[k]=s[k]+r[k] end
+        for _,k in ipairs({"tip","enchants","accepted","declined","pending","other","grouped","busy","noTrade","manual","auto"}) do s[k]=s[k]+(r[k] or 0) end
         if r.accepted>1 then s.repeatCustomers=s.repeatCustomers+1 end
     end
     return s
 end
 function D:Export()
     local rows=self:Rows()
-    local lines={"Character\tInvite ID\tLocal invite time\tEnchanter\tOutcome\tItems\tTip copper\tAverage copper per item\tUnverified trades"}
+    local lines={"Character\tInvite ID\tLocal invite time\tEnchanter\tOutcome\tItems\tTip copper\tAverage copper per item\tUnverified trades\tInvite source\tIdentity unverified"}
     local function field(v) return fmt(v):gsub("[\t\r\n]"," ") end
     for _,r in ipairs(rows) do
         for _,v in ipairs(r.visits) do
-            lines[#lines+1]=table.concat({field(v.name or r.name),field(v.id),field(v.localTime),field(v.enchanter),field(v.status),field(v.enchants),field(v.tipCopper),field(v.enchants>0 and v.tipCopper/v.enchants or ""),field(v.unverified)},"\t")
+            lines[#lines+1]=table.concat({field(v.name or r.name),field(v.id),field(v.localTime),field(v.enchanter),field(v.status),field(v.enchants),field(v.tipCopper),field(v.enchants>0 and v.tipCopper/v.enchants or ""),field(v.unverified),field(v.source or "auto"),field(v.identityUnverified and "yes" or "no")},"\t")
         end
     end
     return table.concat(lines,"\n")
@@ -155,7 +155,7 @@ function D:Build()
     self.pageLabel=label(p,90,-404,340,"")
     button(p,415,-397,65,"Next",function() self.page=self.page+1; self:Refresh() end)
     self.detail=label(p,18,-432,980,"Select a customer","GameFontNormal")
-    self.historyHeader=label(p,18,-460,980,"Local invitation time                    Outcome                 Enchanter                 Items          Tips          Avg/item       Review")
+    self.historyHeader=label(p,18,-460,980,"Local invitation time                    Outcome / source        Enchanter                 Items          Tips          Avg/item       Review")
     self.history={}
     for i=1,6 do self.history[i]=label(p,20,-481-(i-1)*24,980,"","GameFontHighlightSmall") end
     button(p,18,-631,65,"Prev",function() self.visitPage=math.max(1,self.visitPage-1); self:Refresh() end)
@@ -313,7 +313,7 @@ function D:Refresh()
     for name,b in pairs(self.tabs) do b:SetText((self.tab==name and "* " or "")..name) end
     local rows=self:Rows(); local s=self:Summary(rows)
     self.summary:SetText(("%d customers   |   %s tips   |   %d items   |   %s / item   |   %d accepted / %d declined   |   %d pending"):format(#rows,gold(s.tip),s.enchants,gold(s.enchants>0 and s.tip/s.enchants or -1),s.accepted,s.declined,s.pending))
-    self.overviewText:SetText(("Lifetime / selected filters\n\nTotal tips: %s\nItems enchanted: %d\nAverage per item: %s\nInvite acceptance: %s\nRepeat customers: %d\nPending invitations: %d\nAlready grouped: %d | Busy / pending elsewhere: %d\nLeft without trading: %d\nFailed / ambiguous / superseded: %d\n\nTrade evidence is conservative. Unverified trades are excluded."):format(gold(s.tip),s.enchants,gold(s.enchants>0 and s.tip/s.enchants or -1),rate(s.accepted+s.declined>0 and s.accepted/(s.accepted+s.declined) or -1),s.repeatCustomers,s.pending,s.grouped,s.busy,s.noTrade,s.other))
+    self.overviewText:SetText(("Lifetime / selected filters\n\nTotal tips: %s\nItems enchanted: %d\nAverage per item: %s\nInvite acceptance: %s\nRepeat customers: %d\nPending invitations: %d\nAutomatic: %d | Manual/external: %d\nAlready grouped: %d | Busy / pending elsewhere: %d\nLeft without trading: %d\nFailed / ambiguous / superseded: %d\n\nTrade evidence is conservative. Unverified trades are excluded."):format(gold(s.tip),s.enchants,gold(s.enchants>0 and s.tip/s.enchants or -1),rate(s.accepted+s.declined>0 and s.accepted/(s.accepted+s.declined) or -1),s.repeatCustomers,s.pending,s.auto,s.manual,s.grouped,s.busy,s.noTrade,s.other))
     self.periodButton:SetText(({[0]="Lifetime",[-1]="Today",[7]="Last 7 days",[30]="Last 30 days"})[self.period])
     self.filterButton:SetText(({all="All customers",accepted="Accepted",["repeat"]="Repeat",never="Never accepted"})[self.filter])
     for _,col in ipairs(COLS) do self.headers[col[2]]:SetText(col[1]..(self.sort==col[2] and (self.desc and " v" or " ^") or "")) end
@@ -335,7 +335,7 @@ function D:Refresh()
     local visits={}
     if selected then
         local guild=ns.Guild:Membership(selected.guid)
-        self.detail:SetText(("%s  |  no-trade: %d  |  offenses: %d  |  free guild items: %d  |  guild: %s"):format(selected.name,selected.noTrade,selected.offenses,selected.freeEnchants,guild==nil and "unknown" or guild and "yes" or "no"))
+        self.detail:SetText(("%s  |  no-trade: %d  |  offenses: %d  |  free guild items: %d  |  guild: %s"):format(selected.name..(" [manual %d / auto %d]"):format(selected.manual or 0,selected.auto or 0),selected.noTrade,selected.offenses,selected.freeEnchants,guild==nil and "unknown" or guild and "yes" or "no"))
         for _,v in ipairs(selected.visits) do visits[#visits+1]=v end
         table.sort(visits,function(a,b) return a.id>b.id end)
     else self.detail:SetText("Select a customer to view individual invitations") end
@@ -343,7 +343,7 @@ function D:Refresh()
     self.visitLabel:SetText(("History %d / %d"):format(self.visitPage,vp))
     for i,fs in ipairs(self.history) do
         local v=visits[(self.visitPage-1)*6+i]
-        fs:SetText(v and ("%s    |    %s    |    %s    |    %d items    |    %s    |    %s    |    %d unverified"):format(v.localTime or self.ledger:Stamp(v.invited),v.status,v.enchanter or "?",v.enchants or 0,gold(v.tipCopper),gold(v.enchants>0 and v.tipCopper/v.enchants or -1),v.unverified or 0) or "")
+        fs:SetText(v and ("%s    |    %s    |    %s    |    %d items    |    %s    |    %s    |    %d unverified"):format(v.localTime or self.ledger:Stamp(v.invited),v.status.."/"..(v.source=="manual" and "manual" or "auto")..(v.identityUnverified and "?" or ""),v.enchanter or "?",v.enchants or 0,gold(v.tipCopper),gold(v.enchants>0 and v.tipCopper/v.enchants or -1),v.unverified or 0) or "")
     end
     self.configState:SetText(("Minimap: %s | Debug: %s | Learning: %s"):format(self.db.minimapHidden and "hidden" or "shown",self.db.debug and "on" or "off",self.db.popupEnabled and "on" or "off"))
     local lines={"Whitelist (first 10 entries; /ae list for all)"}

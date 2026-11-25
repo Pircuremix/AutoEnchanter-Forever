@@ -1,6 +1,6 @@
 # Architecture and maintenance contracts
 
-Source version: 1.6.1. Forever interface 16001. This document describes actual implementation, not a design proposal.
+Source version: 1.6.2. Forever interface 16001. This document describes actual implementation, not a design proposal.
 
 ## Runtime layout and load order
 
@@ -97,3 +97,7 @@ Schema 2 supersedes schema 1 expiration classification and adds customer policy 
 Core pre-invite path: chat eligibility, normalized exact lookup, seven-second anti-spam, cached GUID guild membership, constant-time restriction and own pending checks, native eligibility and InviteUnit. No history scan, guild roster request, chat-cache pruning or dashboard rendering before invite. Synchronous native result events are buffered until ledger record exists; the guild whisper follows the native call and queued results. A native call is not delivery confirmation. Optional normal welcome remains independent and uses Group.lua after observed join. Trade ledger finalization and UI refresh are post-invite/event-driven.
 
 Policy:Init reconstructs accepted, verified decline, tip, unverified, grouped, busy and no-trade totals once at login. Outcomes and completed trades increment cached totals. Pending keys are indexed by enchanter GUID and customer GUID. Restrictions are absolute epoch deadlines; no timer per ban. A close callback settles for five seconds; restored/ambiguous visits are not penalized, including logout during settlement. Group departure is observed absence, not blame. Unverified trades prevent non-tipping enforcement. Guild roster membership is tri-state; no uncertain tip restriction enforced. Guild membership at invitation and service is used conservatively, and guild whispers may be blocked; empty text never calls chat API. No change to original configured welcome. Blacklist removal clears active deadlines and accumulated unpaid days, retains offense history.
+
+## 1.6.2 manual invitation observation
+
+InviteResults installs read-only secure post-hooks on native InviteUnit/ConfirmInviteUnit when available. The existing auto call queue suppresses self-observation; unmatched outgoing sent evidence can provide a fallback. Manual requests use the same ledger, with optional source and identityUnverified fields in schema 2. Only observed exact full-name home-roster membership binds a provisional manual visit to a GUID; no unrelated roster joins are counted. Known GUID manual invitations share policies. Name-only outcomes remain visible but cannot impose restrictions. Manual pending names have an indexed owner/name key to suppress overlapping auto invites. Recent chat GUID observations and native unit identities are only consulted after manual calls; auto name lookup is constant time. See MANUAL-INVITES.md.

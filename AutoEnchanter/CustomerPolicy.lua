@@ -18,7 +18,7 @@ function P:Init(ledger)
             p.days=type(p.days)=="table" and p.days or {}; p.dayCount=0
             for _ in pairs(p.days) do p.dayCount=p.dayCount+1 end
             for _,v in ipairs(c.visits) do
-                if type(v)=="table" then
+                if type(v)=="table" and not v.identityUnverified then
                     if v.status=="accepted" then p.accepted=p.accepted+1 end
                     if v.status=="declined" or (v.status=="expired" and v.sentConfirmed==true) then p.declines=p.declines+1 end
                     if v.status=="already_grouped" then p.grouped=p.grouped+1 end
