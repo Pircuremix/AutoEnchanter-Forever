@@ -7,7 +7,7 @@ local function num(n) return valid(n) and n or 0 end
 local function now() return ns.Database:Now() end
 local function day(t) local ok,v=pcall(date,"%Y-%m-%d",t); if ok and type(v)=="string" then return v end end
 function P:Init(ledger)
-    self.ledger=ledger; self.skipped={cooldown=0,declines=0,tips=0}; self.finalizing={}
+    self.ledger=ledger; self.skipped={cooldown=0,declines=0,tips=0}; self.finalizing={}; self.settling={}
     if not ledger.ready then return end
     -- Rebuild lifetime totals once; schema-1 timeouts are not policy evidence.
     for _,c in pairs(ledger.ledger.customers) do
@@ -40,6 +40,7 @@ function P:Get(guid)
     return c.policy,c
 end
 function P:Restriction(guid,guild,t)
+    if self.settling[guid] then return "cooldown",self.settling[guid].closed+5 end
     local p=self:Get(guid)
     if not p then return nil end
     t=t or now(); if not valid(t) then return nil end
@@ -67,7 +68,8 @@ function P:Outcome(guid,v,status,t)
         p.cooldownUntil=math.max(num(p.cooldownUntil),t+30*MINUTE)
         p.cooldownReason=status
         if p.accepted==0 and p.declines>=5 then
-            local days=p.declines==5 and 30 or 10
+            local days=p.declineBans and p.declineBans>0 and 10 or 30
+            p.declineBans=num(p.declineBans)+1
             p.declineUntil=math.max(num(p.declineUntil),t+days*DAY)
             p.history[#p.history+1]={kind="decline",at=t,untilTime=p.declineUntil,days=days,visit=v.id,declines=p.declines}
         end
@@ -122,8 +124,10 @@ function P:Close(guid,v,uncertain)
     if uncertain then v.closureUncertain=true end
     if self.finalizing[v.id] then return end
     self.finalizing[v.id]=true
+    if not uncertain and v.policyEligible then self.settling[guid]=v end
     local function finish()
         self.finalizing[v.id]=nil
+        if self.settling[guid]==v then self.settling[guid]=nil end
         local p,c=self:Get(guid)
         if not c then return end
         -- Deleted customer / reset / old callback: do not mutate a replacement record.

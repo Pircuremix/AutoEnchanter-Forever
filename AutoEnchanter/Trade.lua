@@ -63,7 +63,7 @@ function T:Finish(s,confirmed,reason)
         self.ledger:AddTrade(s.guid,s.visit,{at=self.ledger:Now(),copper=tip,enchants=x.givenEnchant and 1 or 0,
             incoming=x.incoming,outgoing=x.outgoing,reason="explicit trade completion",unverified=false,
             exchanged=x.incoming>0 or x.outgoing>0 or x.itemsIn or x.itemsOut or x.givenEnchant or x.receivedEnchant or x.currency,
-            guild=s.guild})
+            guild=s.guild==true and true or ns.Guild:Membership(s.guid)})
         self.stats.confirmed=self.stats.confirmed+1
     else
         self.stats.unverified=self.stats.unverified+1
@@ -85,7 +85,13 @@ function T:Event(event,...)
         if self.current then self:Finish(self.current,false,"new trade before completion evidence") end
         local guid=value(UnitGUID,"npc")
         local v=self.ledger:Active(guid)
-        if not v then return end
+        if not v then
+            -- Unreadable partner identity may hide a tracked transaction.
+            if type(guid)~="string" or guid=="" then
+                for _,visit in pairs(self.ledger.active or {}) do visit.closureUncertain=true end
+            end
+            return
+        end
         self.current={guid=guid,visit=v,accepted=false,closed=false,ambiguous=ambiguous,guild=ns.Guild:Membership(guid)}
         self:Snapshot(self.current)
         return

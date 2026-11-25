@@ -1,7 +1,7 @@
 -- Dashboard.lua: paginated, sortable customer ledger and configuration.
 local _,ns=...
 local D={}; ns.Dashboard=D
-local COLS={{"Character","name",220},{"Accepted","accepted",75},{"Declined","declined",75},{"Pending","pending",68},{"Tips","tip",100},{"Items","enchants",60},{"Avg/item","avg",100},{"Accept %","rate",80},{"Last invite","last",145}}
+local COLS={{"Character","name",175},{"Accept","accepted",65},{"Decline","declined",65},{"Grouped","grouped",65},{"Busy","busy",65},{"Pending","pending",62},{"Tips","tip",85},{"Items","enchants",55},{"Avg/item","avg",85},{"Accept %","rate",72},{"Last invite","last",135}}
 local function gold(n)
     if not n or n<0 then return "—" end
     return ("%0.2fg"):format(n/10000)
@@ -27,6 +27,7 @@ function D:Init(db,ledger,options,log)
     self.db,self.ledger,self.options,self.log=db,ledger,options,log
     self.tab,self.sort,self.desc,self.page,self.visitPage,self.period,self.filter="Customers","tip",true,1,1,0,"all"
     self.query=""; self.selected=nil; self.confirm=nil; self.refreshQueued=false
+    self.banQuery=""; self.banSort="expiry"; self.banDesc=true; self.banPage=1; self.banSelected=nil; self.banConfirm=nil; self.banFilter="All"
     if type(db.dashboardPosition)~="table" then db.dashboardPosition={} end
 end
 function D:Rows()
@@ -54,9 +55,9 @@ end
 function D:Select(guid) self.selected=guid; self.visitPage=1; self.confirm=nil; self:Refresh() end
 function D:Sort(k) if self.sort==k then self.desc=not self.desc else self.sort=k; self.desc=k~="name" end; self.page=1; self:Refresh() end
 function D:Summary(rows)
-    local s={tip=0,enchants=0,accepted=0,declined=0,pending=0,other=0,repeatCustomers=0}
+    local s={tip=0,enchants=0,accepted=0,declined=0,pending=0,other=0,repeatCustomers=0,grouped=0,busy=0,noTrade=0}
     for _,r in ipairs(rows) do
-        for _,k in ipairs({"tip","enchants","accepted","declined","pending","other"}) do s[k]=s[k]+r[k] end
+        for _,k in ipairs({"tip","enchants","accepted","declined","pending","other","grouped","busy","noTrade"}) do s[k]=s[k]+r[k] end
         if r.accepted>1 then s.repeatCustomers=s.repeatCustomers+1 end
     end
     return s
@@ -113,8 +114,8 @@ function D:Build()
     button(header,774,-14,35,"+",function() resize(.05) end)
     button(header,967,-14,38,"X",function() f:Hide() end)
     self.tabs={}
-    for i,name in ipairs({"Overview","Customers","Settings"}) do
-        self.tabs[name]=button(f,18+(i-1)*130,-65,124,name,function() self.tab=name; self.confirm=nil; self:Refresh() end)
+    for i,name in ipairs({"Overview","Customers","Blacklist","Settings","Guild settings"}) do
+        self.tabs[name]=button(f,18+(i-1)*130,-65,124,name,function() self.tab=name; self.confirm=nil; self.banConfirm=nil; self:Refresh() end)
     end
     self.summary=label(f,18,-103,980,"","GameFontHighlight")
     self.customerPanel=CreateFrame("Frame",nil,f); self.customerPanel:SetAllPoints(f)
@@ -177,6 +178,9 @@ function D:Build()
     button(self.config,900,-570,70,"Add",function() SlashCmdList.AUTOENCHANTER("add "..add:GetText()); add:SetText(""); self:Refresh() end)
     local rem=edit(self.config,660,-604,235)
     button(self.config,900,-604,70,"Remove",function() SlashCmdList.AUTOENCHANTER("remove "..rem:GetText()); rem:SetText(""); self:Refresh() end)
+    button(self.config,660,-638,310,"Guild invitation whisper settings",function() self.tab="Guild settings"; self:Refresh() end)
+    self:BuildGuild(f)
+    self:BuildBlacklist(f)
     self.exportPanel=CreateFrame("Frame",nil,f); self.exportPanel:SetSize(900,510); self.exportPanel:SetPoint("CENTER"); self.exportPanel:SetFrameLevel(f:GetFrameLevel()+30); tint(self.exportPanel,.08,.09,.12,1); self.exportPanel:EnableMouse(true)
     label(self.exportPanel,18,-18,840,"Export (selected filters) — Ctrl+A, Ctrl+C; data stays local","GameFontNormal")
     button(self.exportPanel,810,-12,70,"Close",function() self.exportPanel:Hide() end)
@@ -185,9 +189,112 @@ function D:Build()
     self.exportBox=CreateFrame("EditBox",nil,scroll); self.exportBox:SetMultiLine(true); self.exportBox:SetAutoFocus(false); self.exportBox:SetFontObject(ChatFontNormal); self.exportBox:SetWidth(820); self.exportBox:SetHeight(430); scroll:SetScrollChild(self.exportBox)
     self.exportPanel:Hide()
     f:SetScript("OnShow",function() self:Refresh() end)
-    f:SetScript("OnHide",function() self.confirm=nil; self.exportPanel:Hide() end)
+    f:SetScript("OnHide",function() self.confirm=nil; self.banConfirm=nil; self.exportPanel:Hide() end)
     if UISpecialFrames then UISpecialFrames[#UISpecialFrames+1]="AutoEnchanterDashboard" end
     f:Hide()
+end
+function D:BuildGuild(parent)
+    local p=CreateFrame("Frame",nil,parent); self.guildPanel=p; p:SetAllPoints(parent)
+    label(p,24,-145,900,"Guild invitation whisper","GameFontNormalLarge")
+    label(p,24,-182,900,"Sent privately AFTER the native invite, before any acceptance. Normal welcome is separate.")
+    local check=CreateFrame("CheckButton",nil,p,"UICheckButtonTemplate"); check:SetPoint("TOPLEFT",p,"TOPLEFT",24,-212)
+    label(p,60,-221,900,"Whisper guild members when inviting")
+    check:SetScript("OnClick",function(b) self.db.guildWhisperEnabled=b:GetChecked() and true or false end)
+    label(p,24,-260,900,"Message (empty or whitespace-only means do not whisper; maximum 255 bytes)")
+    local input=edit(p,28,-290,800); input:SetMaxLetters(255)
+    local note=label(p,24,-326,900,"")
+    local function save()
+        local ok,reason=ns.Guild:SetMessage(input:GetText())
+        note:SetText(ok and (input:GetText():match("^%s*$") and "Saved. Empty message: whispers suppressed." or "Saved.") or reason)
+        input:ClearFocus()
+    end
+    button(p,845,-290,140,"Save",save)
+    input:SetScript("OnEnterPressed",save)
+    input:SetScript("OnEscapePressed",function() input:SetText(self.db.guildWhisperMessage); input:ClearFocus() end)
+    button(p,24,-370,170,"Restore default",function() input:SetText(ns.Guild:DefaultMessage()); save() end)
+    button(p,204,-370,170,"Refresh guild roster",function() ns.Guild:Request(); self:Refresh() end)
+    label(p,24,-415,900,"Guild members are exempt from non-tipping penalties even when whispers are disabled.","GameFontNormal")
+    label(p,24,-445,900,"Former guild members lose the exemption after a valid roster update; past free services stay exempt.")
+    self.guildStatus=label(p,24,-480,900,"")
+    p:SetScript("OnShow",function() check:SetChecked(self.db.guildWhisperEnabled); input:SetText(self.db.guildWhisperMessage); note:SetText("") end)
+    p:Hide()
+end
+function D:BanRows()
+    local out={}
+    for _,r in ipairs(ns.Policy:Rows()) do
+        if r.name:lower():find(self.banQuery:lower(),1,true) and
+           (self.banFilter=="All" or self.banFilter=="Active" and r.reason~="history" and r.reason~="tip ban suspended" or self.banFilter=="History" and r.reason=="history" or self.banFilter=="Suspended" and r.reason=="tip ban suspended") then out[#out+1]=r end
+    end
+    local k,desc=self.banSort,self.banDesc
+    table.sort(out,function(a,b) if a[k]==b[k] then return a.guid<b.guid end; if desc then return a[k]>b[k] end; return a[k]<b[k] end)
+    return out
+end
+function D:BuildBlacklist(parent)
+    local p=CreateFrame("Frame",nil,parent); self.banPanel=p; p:SetAllPoints(parent)
+    local search=edit(p,22,-132,250); search:SetMaxLetters(80)
+    search:SetScript("OnTextChanged",function(e) self.banQuery=e:GetText(); self.banPage=1; self.banConfirm=nil; self:Refresh() end)
+    self.banFilterBtn=button(p,285,-132,140,"All",function()
+        local values={"All","Active","History","Suspended"}; local i=1
+        for j,v in ipairs(values) do if v==self.banFilter then i=j end end
+        self.banFilter=values[i%4+1]; self.banPage=1; self.banConfirm=nil; self:Refresh()
+    end)
+    self.banRemove=button(p,720,-132,265,"Remove selected restrictions",function()
+        if not self.banSelected then return end
+        if self.banConfirm~=self.banSelected then self.banConfirm=self.banSelected
+        else ns.Policy:Remove(self.banSelected); self.banConfirm=nil end
+        self:Refresh()
+    end)
+    local cols={{"Character","name",240},{"Restriction","reason",220},{"Expires (local)","expiry",220},{"Tip offenses","offenses",120}}
+    local x=18; self.banHeaders={}
+    for _,col in ipairs(cols) do
+        local key=col[2]
+        self.banHeaders[key]=button(p,x,-170,col[3]-3,col[1],function()
+            if self.banSort==key then self.banDesc=not self.banDesc else self.banSort=key; self.banDesc=key~="name" end
+            self.banPage=1; self:Refresh()
+        end); x=x+col[3]
+    end
+    self.banRows={}
+    for i=1,12 do
+        local row=CreateFrame("Button",nil,p); row:SetSize(982,24); row:SetPoint("TOPLEFT",p,"TOPLEFT",18,-201-(i-1)*25)
+        row.bg=tint(row,.13,.14,.18,1); row.cells={}; x=4
+        for j,col in ipairs(cols) do row.cells[j]=label(row,x,-4,col[3]-7,""); x=x+col[3] end
+        row:SetScript("OnClick",function(b) if b.guid then self.banSelected=b.guid; self.banConfirm=nil; self:Refresh() end end)
+        self.banRows[i]=row
+    end
+    button(p,18,-510,65,"Prev",function() self.banPage=math.max(1,self.banPage-1); self:Refresh() end)
+    self.banPageLabel=label(p,90,-517,340,"")
+    button(p,415,-510,65,"Next",function() self.banPage=self.banPage+1; self:Refresh() end)
+    self.banDetail=label(p,18,-550,970,"Select a customer to see recent restriction history.")
+    p:Hide()
+end
+function D:RefreshBlacklist()
+    local rows=self:BanRows(); local pages=math.max(1,math.ceil(#rows/12)); self.banPage=math.min(self.banPage,pages)
+    self.banPageLabel:SetText(("Page %d / %d · %d records"):format(self.banPage,pages,#rows))
+    self.banFilterBtn:SetText(self.banFilter)
+    local current=ns.Policy.ledger:Now() or 0
+    local selected
+    for _,r in ipairs(rows) do if r.guid==self.banSelected then selected=r; break end end
+    for i,row in ipairs(self.banRows) do
+        local r=rows[(self.banPage-1)*12+i]; row:SetShown(r~=nil); row.guid=r and r.guid
+        if r then
+            row.bg:SetColorTexture(r.guid==self.banSelected and .27 or .13,.14,.18,1)
+            local seconds=math.max(0,r.expiry-current)
+            local expiry=seconds>0 and (self.ledger:Stamp(r.expiry).." ("..math.ceil(seconds/86400).."d)") or "—"
+            if seconds>0 and seconds<86400 then expiry=self.ledger:Stamp(r.expiry).." ("..math.ceil(seconds/60).."m)" end
+            local reasons={cooldown=r.cooldownReason~="" and r.cooldownReason or "Cooldown",declines="Decline ban",tips="Non-tipping ban"}
+            local vals={r.name,reasons[r.reason] or r.reason,expiry,r.offenses}
+            for j,v in ipairs(vals) do row.cells[j]:SetText(fmt(v)) end
+        end
+    end
+    self.banRemove:SetText(self.banConfirm and self.banConfirm==self.banSelected and "Confirm remove restrictions" or "Remove selected restrictions")
+    local lines={}
+    if selected then
+        lines[1]=selected.name.." | tip offenses: "..selected.offenses.." | history retained"
+        for i=#selected.history,math.max(1,#selected.history-3),-1 do
+            local h=selected.history[i]; lines[#lines+1]=(h.at and self.ledger:Stamp(h.at) or "?").."  |  "..h.kind.."  |  "..(h.days and h.days.." days" or "")
+        end
+    else lines[1]="Select a customer to view recent restrictions and offense history." end
+    self.banDetail:SetText(table.concat(lines,"\n"))
 end
 function D:QueueRefresh()
     if not self.frame or not self.frame:IsShown() or self.refreshQueued then return end
@@ -200,10 +307,13 @@ function D:Refresh()
     if not self.frame or not self.frame:IsShown() then return end
     self.status:SetText(self.db.enabled and "AE ON" or "AE OFF")
     self.customerPanel:SetShown(self.tab=="Customers"); self.overview:SetShown(self.tab=="Overview"); self.config:SetShown(self.tab=="Settings")
+    self.guildPanel:SetShown(self.tab=="Guild settings"); self.banPanel:SetShown(self.tab=="Blacklist")
+    if self.tab=="Guild settings" then self.guildStatus:SetText(ns.Guild.ready and "Guild roster synchronized." or "Guild roster not ready; unknown members protected from tip penalties.") end
+    if self.tab=="Blacklist" then self:RefreshBlacklist() end
     for name,b in pairs(self.tabs) do b:SetText((self.tab==name and "* " or "")..name) end
     local rows=self:Rows(); local s=self:Summary(rows)
     self.summary:SetText(("%d customers   |   %s tips   |   %d items   |   %s / item   |   %d accepted / %d declined   |   %d pending"):format(#rows,gold(s.tip),s.enchants,gold(s.enchants>0 and s.tip/s.enchants or -1),s.accepted,s.declined,s.pending))
-    self.overviewText:SetText(("Lifetime / selected filters\n\nTotal tips: %s\nItems enchanted: %d\nAverage per item: %s\nInvite acceptance: %s\nRepeat customers: %d\nPending invitations: %d\nFailed / ambiguous / superseded: %d\n\nTrade evidence is conservative. Unverified trades are excluded."):format(gold(s.tip),s.enchants,gold(s.enchants>0 and s.tip/s.enchants or -1),rate(s.accepted+s.declined>0 and s.accepted/(s.accepted+s.declined) or -1),s.repeatCustomers,s.pending,s.other))
+    self.overviewText:SetText(("Lifetime / selected filters\n\nTotal tips: %s\nItems enchanted: %d\nAverage per item: %s\nInvite acceptance: %s\nRepeat customers: %d\nPending invitations: %d\nAlready grouped: %d | Busy / pending elsewhere: %d\nLeft without trading: %d\nFailed / ambiguous / superseded: %d\n\nTrade evidence is conservative. Unverified trades are excluded."):format(gold(s.tip),s.enchants,gold(s.enchants>0 and s.tip/s.enchants or -1),rate(s.accepted+s.declined>0 and s.accepted/(s.accepted+s.declined) or -1),s.repeatCustomers,s.pending,s.grouped,s.busy,s.noTrade,s.other))
     self.periodButton:SetText(({[0]="Lifetime",[-1]="Today",[7]="Last 7 days",[30]="Last 30 days"})[self.period])
     self.filterButton:SetText(({all="All customers",accepted="Accepted",["repeat"]="Repeat",never="Never accepted"})[self.filter])
     for _,col in ipairs(COLS) do self.headers[col[2]]:SetText(col[1]..(self.sort==col[2] and (self.desc and " v" or " ^") or "")) end
@@ -216,15 +326,16 @@ function D:Refresh()
         row:SetShown(r~=nil); row.guid=r and r.guid
         if r then
             row.bg:SetColorTexture(r.guid==self.selected and .27 or .13,.14,.18,1)
-            local vals={r.name,r.accepted,r.declined,r.pending,gold(r.tip),r.enchants,gold(r.avg),rate(r.rate),self.ledger:Stamp(r.last)}
-            for j,v in ipairs(vals) do row.cells[j]:SetText(fmt(v)); row.cells[j]:SetTextColor(j==2 and .35 or 1,j==3 and .45 or 1,(j==2 or j==3 or j==5 or j==7) and .45 or 1) end
+            local vals={r.name,r.accepted,r.declined,r.grouped,r.busy,r.pending,gold(r.tip),r.enchants,gold(r.avg),rate(r.rate),self.ledger:Stamp(r.last)}
+            for j,v in ipairs(vals) do row.cells[j]:SetText(fmt(v)); row.cells[j]:SetTextColor(j==2 and .35 or 1,j==3 and .45 or 1,(j==2 or j==3 or j==7 or j==9) and .45 or 1) end
         end
     end
     self.deleteButton:SetText(self.confirm==self.selected and self.selected and "Confirm delete" or "Delete selected")
     self.resetButton:SetText(self.confirm=="reset" and "Confirm RESET" or "Reset database")
     local visits={}
     if selected then
-        self.detail:SetText(("%s  |  %d invites  |  %s tips  |  %d items"):format(selected.name,#selected.visits,gold(selected.tip),selected.enchants))
+        local guild=ns.Guild:Membership(selected.guid)
+        self.detail:SetText(("%s  |  no-trade: %d  |  offenses: %d  |  free guild items: %d  |  guild: %s"):format(selected.name,selected.noTrade,selected.offenses,selected.freeEnchants,guild==nil and "unknown" or guild and "yes" or "no"))
         for _,v in ipairs(selected.visits) do visits[#visits+1]=v end
         table.sort(visits,function(a,b) return a.id>b.id end)
     else self.detail:SetText("Select a customer to view individual invitations") end

@@ -15,6 +15,7 @@ function G:Init(db,log)
     if type(db.guildWhisperEnabled)~="boolean" then db.guildWhisperEnabled=true end
     if not valid(db.guildWhisperMessage) then db.guildWhisperMessage=DEFAULT end
 end
+function G:DefaultMessage() return DEFAULT end
 function G:SetMessage(msg)
     if not valid(msg) then return false,"Message must be one line, maximum 255 bytes." end
     self.db.guildWhisperMessage=msg; return true

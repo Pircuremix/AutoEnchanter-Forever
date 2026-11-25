@@ -36,7 +36,7 @@ local function pattern(template)
     return "^"..table.concat(parts).."$"
 end
 function R:Init(ledger)
-    self.ledger=ledger; self.rules={}; self.queue=nil
+    self.ledger=ledger; self.rules={}; self.queue=nil; self.unknown=0; self.missedGrouped=0; self.missedBusy=0
     for _,rule in ipairs(RULES) do
         local v=_G[rule[1]]
         if readable(v) and type(v)=="string" then
@@ -60,20 +60,26 @@ function R:Handle(msg)
         local a,b=cleaned:match(rule[1])
         if a and (not b or key(a)==key(b)) then
             local guid=self.ledger:NamedResult(key(a),rule[2],key)
+            if not guid and rule[2]=="already_grouped" then self.missedGrouped=self.missedGrouped+1
+            elseif not guid and rule[2]=="busy" then self.missedBusy=self.missedBusy+1 end
             if guid and rule[2]~="sent" and ns.Group and ns.Group.pending and not self.ledger:HasPending(guid) then ns.Group.pending[guid]=nil end
             return guid
         end
     end
     -- A nameless busy result cannot be linked reliably; invalidate sent
     -- evidence rather than attributing a decline to a potentially unavailable player.
-    for _,entry in ipairs({{"ERR_ALREADY_INVITED_TO_GROUP","busy"},{"ERR_ALREADY_IN_GROUP","already_grouped"},{"ERR_PLAYER_BUSY","busy"},{"ERR_GROUP_FULL","failed"}}) do
+    for _,entry in ipairs({{"ERR_ALREADY_INVITED_TO_GROUP","busy"},{"ERR_ALREADY_IN_GROUP","already_grouped"},{"ERR_PLAYER_BUSY","busy"},{"ERR_GROUP_FULL","failed"},{"ERR_INVITE_PARTY_BUSY","failed"},{"ERR_NOT_LEADER","failed"},{"ERR_INVITE_IN_COMBAT","failed"}}) do
         local v=_G[entry[1]]
         if readable(v) and type(v)=="string" and cleaned==clean(v) then
             local visit,guid=self.synchronousVisit,self.synchronousGUID
             local p=visit and self.ledger.pending[visit.id]
             if p and p.guid==guid then self.ledger:Resolve(p,entry[2],self.ledger:Now(),"synchronous unnamed game result"); self.ledger:Schedule()
-            else self.ledger:InvalidateSent() end
+            else self.ledger:InvalidateSent(); self.unknown=self.unknown+1 end
             return guid
         end
     end
+end
+
+function R:Status(log)
+    log(("Unattributed native results (events, may duplicate): grouped=%d busy=%d unnamed=%d"):format(self.missedGrouped,self.missedBusy,self.unknown))
 end

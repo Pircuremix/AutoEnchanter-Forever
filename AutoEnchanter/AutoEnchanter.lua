@@ -409,7 +409,7 @@ local function DoInvite(playerName, guid, start)
         return
     end
     local memberGuild=guild:Membership(guid)
-    if not policy:Allow(guid,memberGuild) or ledger:HasPending(guid) then stats.skipped=stats.skipped+1; return end
+    if not policy:Allow(guid,memberGuild) or ledger:HasPending(guid,ownGUID) then stats.skipped=stats.skipped+1; return end
     local party = C_PartyInfo
     local trackable = false
     if party and party.IsGUIDInGroup and readable(guid) and type(guid) == "string" and guid ~= "" then
@@ -584,7 +584,7 @@ SlashCmdList["AUTOENCHANTER"] = function(msg)
     if db then
         if cmd == "settings" or cmd == "config" then dashboard:Open("Settings"); return end
         if cmd == "database" or cmd == "dashboard" then dashboard:Open("Customers"); return end
-        if cmd == "ledgerstatus" then ledger:Status(); trade:Status(); policy:Status(); guild:Status(); return end
+        if cmd == "ledgerstatus" then ledger:Status(); trade:Status(); policy:Status(); guild:Status(); results:Status(printSys); return end
         if cmd == "blacklist" then dashboard:Open("Blacklist"); return end
         if cmd == "performance" then performance:Status(printSys); return end
         if guild:Command(cmd,rest) then return end
@@ -607,7 +607,7 @@ SlashCmdList["AUTOENCHANTER"] = function(msg)
         printSys(("Menu.ModifyMenu=%s issecretvalue=%s; automatic invites blocked=%s"):format(type(Menu and Menu.ModifyMenu), type(issecretvalue), tostring(inviteBlocked == true)))
         printSys(("Simulated=%d; failed calls=%d; ineligible=%d; API calls are not delivery confirmations"):format(stats.simulated, stats.failed, stats.ineligible))
         group:Status()
-        ledger:Status(); trade:Status(); policy:Status(); guild:Status(); performance:Status(printSys)
+        ledger:Status(); trade:Status(); policy:Status(); guild:Status(); results:Status(printSys); performance:Status(printSys)
         return
     end
     if cmd == "status" then
@@ -789,7 +789,7 @@ frame:SetScript("OnEvent", function(self, event, ...)
         RefreshIdentity()
         ledger:OnRoster(); group:OnRoster()
     elseif event == "GROUP_ROSTER_UPDATE" or event == "PARTY_LEADER_CHANGED" then
-        ledger:OnRoster(); group:OnRoster(); dashboard:Refresh()
+        ledger:OnRoster(); group:OnRoster(); dashboard:QueueRefresh()
     elseif event=="GUILD_ROSTER_UPDATE" then
         guild:Refresh(); dashboard:QueueRefresh()
     elseif event=="PLAYER_GUILD_UPDATE" then

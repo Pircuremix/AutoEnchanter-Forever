@@ -215,8 +215,8 @@ function D:FailRecent()
     end
     if match then self:Resolve(match,"failed",now,"native invite block"); self:Schedule() end
 end
-function D:HasPending(guid)
-    local own=owner()
+function D:HasPending(guid,knownOwner)
+    local own=knownOwner or owner()
     return type(guid)=="string" and type(own)=="string" and (self.pendingKeys[own..":"..guid] or 0)>0 or false
 end
 function D:Active(guid)
@@ -276,11 +276,11 @@ end
 function D:Delete(guid)
     if not self.ready or not self.ledger.customers[guid] then return end
     for id,p in pairs(self.pending) do if p.guid==guid then self.pendingKeys[p.visit.owner..":"..guid]=nil; self.pending[id]=nil end end
-    self.active[guid]=nil; self.ledger.customers[guid]=nil; self:Touch(); self:Schedule()
+    self.active[guid]=nil; policy.settling[guid]=nil; self.ledger.customers[guid]=nil; self:Touch(); self:Schedule()
 end
 function D:Reset()
     if not self.ready then return end
-    self.ledger.customers={}; self.pending,self.active,self.pendingKeys={},{},{}; self:Touch(); self:Schedule()
+    self.ledger.customers={}; self.pending,self.active,self.pendingKeys={},{},{}; policy.settling={}; self:Touch(); self:Schedule()
 end
 function D:Now() return clock() end
 function D:Stamp(t) return localstamp(t) end
