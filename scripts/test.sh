@@ -6,3 +6,4 @@ for f in AutoEnchanter/*.lua tests/*.lua; do "luac$v" -p "$f"; done
 "lua$v" tests/regression.lua
 "lua$v" tests/group.lua
 "lua$v" tests/business.lua
+"lua$v" tests/policy.lua

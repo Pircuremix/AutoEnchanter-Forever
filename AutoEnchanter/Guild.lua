@@ -47,6 +47,22 @@ function G:Refresh()
     if not nextMembers[own] then return end
     self.members=nextMembers; self.ready=true
 end
+function G:OnSystem(message)
+    if self.inGuild~=true or not readable(message) or type(message)~="string" then return end
+    -- Native roster event remains authoritative; request when explicit guild
+    -- membership-change notices arrive, even with the guild UI closed.
+    for _,k in ipairs({"ERR_GUILD_JOIN_S","ERR_GUILD_LEAVE_S","ERR_GUILD_REMOVE_SS","ERR_GUILD_QUIT_S"}) do
+        local template=_G[k]
+        if readable(template) and type(template)=="string" then
+            local a=template:find("%s",1,true) or template:find("%1$s",1,true)
+            if a then
+                local prefix=template:sub(1,a-1)
+                local last=template:match(".*%%s(.*)$") or template:match(".*%%%d+%$s(.*)$") or ""
+                if #prefix+#last>0 and message:sub(1,#prefix)==prefix and (#last==0 or message:sub(-#last)==last) then self:Request(); return end
+            end
+        end
+    end
+end
 function G:Membership(guid)
     if not self.ready or not readable(guid) or type(guid)~="string" or guid=="" then return nil end
     return self.members[guid]==true

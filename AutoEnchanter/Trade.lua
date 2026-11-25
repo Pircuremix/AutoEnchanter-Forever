@@ -60,10 +60,12 @@ function T:Finish(s,confirmed,reason)
     if confirmed and s.accepted and x and not s.ambiguous then
         local tip=0
         if x.incoming>0 and x.outgoing==0 and not x.itemsIn and not x.itemsOut and not x.receivedEnchant and not x.currency then tip=x.incoming end
+        local serviceGuild=s.guild
+        if serviceGuild==false then serviceGuild=ns.Guild:Membership(s.guid) end
         self.ledger:AddTrade(s.guid,s.visit,{at=self.ledger:Now(),copper=tip,enchants=x.givenEnchant and 1 or 0,
             incoming=x.incoming,outgoing=x.outgoing,reason="explicit trade completion",unverified=false,
             exchanged=x.incoming>0 or x.outgoing>0 or x.itemsIn or x.itemsOut or x.givenEnchant or x.receivedEnchant or x.currency,
-            guild=s.guild==true and true or ns.Guild:Membership(s.guid)})
+            guild=serviceGuild})
         self.stats.confirmed=self.stats.confirmed+1
     else
         self.stats.unverified=self.stats.unverified+1

@@ -36,7 +36,7 @@ local function pattern(template)
     return "^"..table.concat(parts).."$"
 end
 function R:Init(ledger)
-    self.ledger=ledger; self.rules={}; self.queue=nil; self.unknown=0; self.missedGrouped=0; self.missedBusy=0
+    self.ledger=ledger; self.rules={}; self.queue=nil; self.unknown=0; self.missedGrouped=0; self.missedBusy=0; self.lastResult=nil
     for _,rule in ipairs(RULES) do
         local v=_G[rule[1]]
         if readable(v) and type(v)=="string" then
@@ -60,8 +60,11 @@ function R:Handle(msg)
         local a,b=cleaned:match(rule[1])
         if a and (not b or key(a)==key(b)) then
             local guid=self.ledger:NamedResult(key(a),rule[2],key)
-            if not guid and rule[2]=="already_grouped" then self.missedGrouped=self.missedGrouped+1
-            elseif not guid and rule[2]=="busy" then self.missedBusy=self.missedBusy+1 end
+            local t=self.ledger:Now()
+            local repeated=self.lastResult and self.lastResult.message==cleaned and t and t-self.lastResult.at<=1
+            if guid and rule[2]~="sent" and t then self.lastResult={message=cleaned,at=t} end
+            if not guid and not repeated and rule[2]=="already_grouped" then self.missedGrouped=self.missedGrouped+1; self.ledger:InvalidateSent()
+            elseif not guid and not repeated and rule[2]=="busy" then self.missedBusy=self.missedBusy+1; self.ledger:InvalidateSent() end
             if guid and rule[2]~="sent" and ns.Group and ns.Group.pending and not self.ledger:HasPending(guid) then ns.Group.pending[guid]=nil end
             return guid
         end

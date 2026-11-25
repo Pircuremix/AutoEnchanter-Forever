@@ -456,9 +456,12 @@ local function DoInvite(playerName, guid, start)
         ledger:Record(playerName,guid,"failed",false,memberGuild); results:End()
         printSys("Invite call failed. Use /invite " .. playerName)
     else
-        local whisper=guild:Whisper(playerName,guid,memberGuild)
-        local visit=ledger:Record(playerName,guid,"pending",trackable,memberGuild,whisper)
+        local visit=ledger:Record(playerName,guid,"pending",trackable,memberGuild)
         results:End(visit,guid)
+        if not visit or visit.status=="pending" or visit.status=="accepted" or visit.status=="unverified" then
+            local whisper=guild:Whisper(playerName,guid,memberGuild)
+            if visit then visit.guildWhisper=whisper end
+        end
         printSys("Invite API called for " .. playerName .. " (delivery unconfirmed)")
         if trackable and (not visit or visit.status=="pending" or visit.status=="accepted") then group:TrackInvite(playerName, guid) end
     end
@@ -795,7 +798,7 @@ frame:SetScript("OnEvent", function(self, event, ...)
     elseif event=="PLAYER_GUILD_UPDATE" then
         guild:Request(); dashboard:QueueRefresh()
     elseif event=="CHAT_MSG_SYSTEM" then
-        results:Handle((...)); trade:Event(event,...)
+        results:Handle((...)); guild:OnSystem((...)); trade:Event(event,...)
     elseif event:find("^TRADE_") or event=="UI_INFO_MESSAGE" or event=="UI_ERROR_MESSAGE" or event=="ENCHANT_SPELL_COMPLETED" or event=="UNIT_SPELLCAST_SUCCEEDED" or event=="PLAYER_TRADE_MONEY" or event=="PLAYER_TRADE_CURRENCY" then
         if event=="UI_INFO_MESSAGE" or event=="UI_ERROR_MESSAGE" then results:Handle(select(2,...)) end
         trade:Event(event,...)
