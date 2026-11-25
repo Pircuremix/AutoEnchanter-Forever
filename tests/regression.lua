@@ -27,6 +27,10 @@ C_PartyInfo = {CanInvite=function() return allowed end, IsPartyFull=function() r
 end}
 AutoEnchanterDB = {whitelist={'LF enchanter 15 agility gloves', 'LF enchanter 15 agility gloves', false, {}, '  '}, debug=true, popupEnabled=true, enabled=true}
 local ns = {}
+assert(loadfile('AutoEnchanter/Database.lua'))('AutoEnchanter',ns)
+assert(loadfile('AutoEnchanter/Trade.lua'))('AutoEnchanter',ns)
+assert(loadfile('AutoEnchanter/Dashboard.lua'))('AutoEnchanter',ns)
+assert(loadfile('AutoEnchanter/Minimap.lua'))('AutoEnchanter',ns)
 assert(loadfile('AutoEnchanter/Group.lua'))('AutoEnchanter',ns)
 assert(loadfile('AutoEnchanter/Settings.lua'))('AutoEnchanter',ns)
 assert(loadfile('AutoEnchanter/AutoEnchanter.lua'))('AutoEnchanter',ns)

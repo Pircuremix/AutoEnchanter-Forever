@@ -1,12 +1,16 @@
 ## Interface: 16001
 ## Title: Auto Enchanter
-## Notes: Forever: enchant customer matching, welcome messages, self-marking and raid conversion.
+## Notes: Forever: enchant customer matching, group automation and local business ledger.
 ## Author: Sleepy
-## Version: 1.4.0
+## Version: 1.5.0
 ## Category: Professions
 ## IconTexture: Interface\AddOns\AutoEnchanter\AutoEnchanterIcon
 ## SavedVariables: AutoEnchanterDB
 
+Database.lua
+Trade.lua
 Group.lua
 Settings.lua
+Dashboard.lua
+Minimap.lua
 AutoEnchanter.lua

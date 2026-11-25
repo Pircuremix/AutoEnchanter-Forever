@@ -87,7 +87,7 @@ local function reset(saved)
         end}
     AutoEnchanterDB=saved or {whitelist={"LF enchant crusader"},enabled=true,debug=false,popupEnabled=true}
     ns={}
-    for _,file in ipairs({"Group.lua","Settings.lua","AutoEnchanter.lua"}) do assert(loadfile("AutoEnchanter/"..file))("AutoEnchanter",ns) end
+    for _,file in ipairs({"Database.lua","Trade.lua","Group.lua","Settings.lua","Dashboard.lua","Minimap.lua","AutoEnchanter.lua"}) do assert(loadfile("AutoEnchanter/"..file))("AutoEnchanter",ns) end
     fire("ADDON_LOADED","AutoEnchanter"); fire("PLAYER_LOGIN"); fire("PLAYER_ENTERING_WORLD")
 end
 local function cmd(s) SlashCmdList.AUTOENCHANTER(s) end
@@ -102,7 +102,7 @@ reset({whitelist={"LF enchant crusader"},enabled=true,debug=false,popupEnabled=t
 check("migration defaults off and valid values",not AutoEnchanterDB.welcomeEnabled and not AutoEnchanterDB.autoMarkerEnabled and not AutoEnchanterDB.autoRaidEnabled and AutoEnchanterDB.raidThreshold==3 and AutoEnchanterDB.raidMarker==1)
 check("migration preserves whitelist",#AutoEnchanterDB.whitelist==1)
 check("invalid message reset",AutoEnchanterDB.welcomeMessage=="Thanks for choosing me for your enchant!")
-cmd("settings"); check("settings category registers and opens",Settings.opened==42)
+ns.Options:Open(); check("settings category registers and opens",Settings.opened==42)
 local canvas=Settings.category.panel; canvas.scripts.OnShow(canvas)
 local edit,save,firstCheck,star,threshold
 for _,f in ipairs(frames) do
