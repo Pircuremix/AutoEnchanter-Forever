@@ -1,6 +1,6 @@
 # WowUp installation and release integration
 
-AutoEnchanter targets **World of Warcraft: Forever** (client interface 16001 as of v1.3.2). The GitHub repository is public, so a personal access token is not needed for ordinary installation.
+AutoEnchanter targets **World of Warcraft: Forever** (client interface 16001 as of v1.4.0). The GitHub repository is public, so a personal access token is not needed for ordinary installation.
 
 ## Install with WowUp
 
@@ -66,15 +66,15 @@ The addon itself never contacts GitHub or WowUp. The account-wide SavedVariables
 | Icon missing | Confirm AutoEnchanterIcon.blp is beside the TOC and Lua file, and fully restart WoW. |
 | Update installed but invites fail | Use /ae diagnostics and /ae status, then follow the README live acceptance checklist. Distribution success does not prove server invite delivery. |
 
-Manual fallback: download the named addon ZIP from Releases and extract it into the Forever AddOns directory. Do not install GitHub's Source code archives or release.json. Do not delete SavedVariables to fix an update issue.
+Manual fallback: download the named addon ZIP from Releases and extract it into the Forever AddOns directory. Do not install GitHub's Source code archives or release.json. From 1.4.0 the addon ZIP additionally contains Group.lua and Settings.lua; restart the game after updating to load the new TOC. Do not delete SavedVariables to fix an update issue.
 
 ## Maintainer release checklist
 
 1. Make and test changes; update CHANGELOG.md and relevant documentation.
 2. Increment the TOC version and the Lua startup/diagnostic version strings together.
 3. Commit to main. The [release workflow](../.github/workflows/release.yml) runs when the TOC or release workflow changes, or via manual workflow dispatch.
-4. The workflow executes syntax checks and regression tests using Lua 5.1 and 5.4, builds a ZIP containing exactly the Lua, TOC and BLP under AutoEnchanter/, checks the ZIP, and generates metadata from the TOC interface and ZIP filename.
-5. The workflow publishes a release named AutoEnchanter <version> tagged v<version>, unless that version already exists. It does not overwrite existing releases. Documentation-only commits do not publish another version.
+4. scripts/test.sh and scripts/package.sh centralize tests and TOC-driven packaging. The workflow executes syntax checks and regression tests using Lua 5.1 and 5.4, builds a ZIP containing all TOC-listed Lua modules, the TOC and BLP under AutoEnchanter/, checks the ZIP, and generates metadata from the TOC interface and ZIP filename.
+5. Create docs/releases/v<version>.md before publishing; the workflow uses that file as the GitHub release body. The workflow publishes a release named AutoEnchanter <version> tagged v<version>, unless that version already exists. It does not overwrite existing releases. Documentation-only commits do not publish another version.
 6. Check both assets and the workflow result, then perform the WowUp verification above. Record live results separately from automated CI results.
 
-For v1.3.2 the corrected [release run](https://github.com/Pircuremix/AutoEnchanter-Forever/actions/runs/45490266550) and [regression run](https://github.com/Pircuremix/AutoEnchanter-Forever/actions/runs/45490266585) completed successfully; [the published release](https://github.com/Pircuremix/AutoEnchanter-Forever/releases/tag/v1.3.2) contains both assets. An earlier release attempt failed due to shell quoting and was corrected. End-to-end automatic installation on a user's WowUp instance and live game behavior are not independently verified here.
+For v1.3.2 the corrected [release run](https://github.com/Pircuremix/AutoEnchanter-Forever/actions/runs/45490266550) and [regression run](https://github.com/Pircuremix/AutoEnchanter-Forever/actions/runs/45490266585) completed successfully; [the published release](https://github.com/Pircuremix/AutoEnchanter-Forever/releases/tag/v1.3.2) contains both assets. An earlier release attempt failed due to shell quoting and was corrected. The owner subsequently confirmed the v1.3.2 WowUp automatic update worked. Live game behavior is still a separate acceptance test.

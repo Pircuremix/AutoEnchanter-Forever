@@ -2,87 +2,99 @@
 
 [![Latest release](https://img.shields.io/github/v/release/Pircuremix/AutoEnchanter-Forever)](https://github.com/Pircuremix/AutoEnchanter-Forever/releases/latest) [![Lua regression tests](https://github.com/Pircuremix/AutoEnchanter-Forever/actions/workflows/tests.yml/badge.svg)](https://github.com/Pircuremix/AutoEnchanter-Forever/actions/workflows/tests.yml) [![Publish Forever release](https://github.com/Pircuremix/AutoEnchanter-Forever/actions/workflows/release.yml/badge.svg)](https://github.com/Pircuremix/AutoEnchanter-Forever/actions/workflows/release.yml)
 
-**Quick links:** [Latest download](https://github.com/Pircuremix/AutoEnchanter-Forever/releases/latest) · [WowUp setup](docs/WOWUP.md) · [Changelog](CHANGELOG.md) · [API audit](API-AUDIT.md) · [Report a problem](https://github.com/Pircuremix/AutoEnchanter-Forever/issues)
+AutoEnchanter is an independent enchanting customer-management addon for **World of Warcraft: Forever** (target interface 16001). Original author: Sleepy. Current source version: **1.4.0**.
 
-**Latest published version: 1.3.2 (release candidate)** • Target: World of Warcraft: Forever 1.60.1, Interface 16001 • Original author: Sleepy
-
-AutoEnchanter monitors public chat for customer requests that match your manually curated enchant whitelist, then immediately calls the native party invite API when enabled and eligible. It does not perform enchants, inspect your recipe book, advertise, send whispers, confirm dialogs, or guarantee delivery of invitations. It does not attempt to bypass Blizzard's restrictions.
+[Download latest release](https://github.com/Pircuremix/AutoEnchanter-Forever/releases/latest) · [WowUp guide](docs/WOWUP.md) · [Changelog](CHANGELOG.md) · [Version notes](docs/releases/README.md) · [Architecture](docs/ARCHITECTURE.md) · [API audit](API-AUDIT.md) · [Report an issue](https://github.com/Pircuremix/AutoEnchanter-Forever/issues)
 
 ## Features
 
-- Event-driven monitoring of General, Trade, Say and Yell chat.
-- Exact normalized whitelist matching, with explicit enchant aliases, typo handling, links and tip removal.
-- Native party invite requests, with a seven-second per-player cooldown and eligibility checks.
-- Full Forever character names, right-click whitelist learning, and dry-run diagnostics.
-- Account-wide saved settings, custom enchanting icon and Professions category.
-- Versioned GitHub releases and WowUp installation/automatic updates on supported clients.
+- Event-driven General, Trade, Say and Yell monitoring; conservative normalized exact matching against a manually maintained whitelist.
+- Immediate native party invite requests, full Forever names, seven-second per-player cooldown and right-click whitelist learning.
+- Optional welcome message **only after an addon-invited customer's GUID is observed in the group**; automatically uses PARTY or RAID at send time.
+- Optional configurable self-marker, preserving any existing marker on yourself and not deliberately taking a selected marker from another observable group member.
+- Optional automatic conversion of an ordinary party to a raid at a configurable threshold (default three total players including yourself).
+- Native in-game settings panel, account-wide persistence, debug mode and diagnostics.
+- Custom enchanting icon, Professions category, tested versioned releases and WowUp distribution.
+
+The addon does not cast enchants, inspect your recipe book, advertise, send whispers, guarantee delivery of invitations or bypass Blizzard restrictions.
 
 ## Install or upgrade
 
-**Recommended: WowUp.** Select the Forever client, import `https://github.com/Pircuremix/AutoEnchanter-Forever`, and enable Auto Update. See the [complete WowUp guide](docs/WOWUP.md). No GitHub token is required.
+**Recommended — WowUp:** select Forever, import `https://github.com/Pircuremix/AutoEnchanter-Forever` and enable Auto Update. The repository is public; no token is required. See [WowUp setup and troubleshooting](docs/WOWUP.md).
 
-**Manual installation:**
+Manual: download the named addon ZIP from [Releases](https://github.com/Pircuremix/AutoEnchanter-Forever/releases/latest), not the source archive. Close WoW, back up your old addon and SavedVariables, and extract the AutoEnchanter folder into the Forever client's Interface/AddOns directory. The runtime files are:
 
-1. Download the versioned addon ZIP from [GitHub Releases](https://github.com/Pircuremix/AutoEnchanter-Forever/releases/latest), not the automatically generated source archive. Exit WoW and back up your old addon folder and account SavedVariables file.
-2. Extract the installation ZIP so the folder `AutoEnchanter` is directly inside `World of Warcraft/_forever_/Interface/AddOns/`. The actual game directory can be found via Battle.net > WoW Forever > Show in Explorer.
-3. The layout must be `AddOns/AutoEnchanter/AutoEnchanter.toc` and `AddOns/AutoEnchanter/AutoEnchanter.lua`, plus `AddOns/AutoEnchanter/AutoEnchanterIcon.blp` for the custom icon.
-4. Launch Forever, enable Auto Enchanter in the addon list, and enter `/ae diagnostics`.
-5. Use `/ae list` to verify your whitelist. Start with `/ae debug on` and `/ae on`, test a known phrase, and only then use `/ae debug off` for real invite calls.
+```text
+Interface/AddOns/AutoEnchanter/
+  AutoEnchanter.toc
+  Group.lua
+  Settings.lua
+  AutoEnchanter.lua
+  AutoEnchanterIcon.blp
+```
 
-### Preserve your TBC whitelist
+Do not install release.json or the test/docs folders. Start WoW and enable Auto Enchanter under Professions. Run `/ae diagnostics` and `/ae list`.
 
-The global SavedVariables table remains `AutoEnchanterDB` with `whitelist`, `debug`, `enabled`, and `popupEnabled`. In your old client's `WTF/Account/<account>/SavedVariables/`, locate `AutoEnchanter.lua` (not the addon source). With both clients closed, copy it to the equivalent directory under `_forever_`. Back up any existing Forever file first; copying replaces its contents. The audit did not include any player's actual saved whitelist. Existing valid string entries and boolean settings are preserved; malformed or empty-normalized entries are discarded, and existing duplicate valid strings are retained. Settings are account-wide, not character-specific. A fresh install starts enabled, with debug simulation and right-click learning enabled, but an empty whitelist.
+### Set up the new features
 
-## WowUp installation and updates
+Open **Escape > Options > AddOns > Auto Enchanter**, or type `/ae settings` (also `/ae config`). All three new features default to **off**, including when upgrading from 1.3.x. Existing settings are preserved.
 
-This repository is public. No GitHub access token is required to install from its releases.
+| Setting | Default | Behavior |
+|---|---|---|
+| Send welcome message | Off | A single message per observed matching pending customer |
+| Welcome text | Thanks for choosing me for your enchant! | Edit and press Save or Enter; single line, max 255 bytes |
+| Self-marker | Off | Only attempt if currently unmarked; never clears an icon |
+| Selected marker | 1 (Star) | Choose any of the eight native raid target icons |
+| Auto raid conversion | Off | Ordinary party, leader only; never converts a raid back to party |
+| Conversion threshold | 3 | Select 2–5 total players, including yourself |
 
-1. Use a current WowUp build with Forever support and release metadata support. Select the Forever client.
-2. Under Get Addons > Install from URL, enter `https://github.com/Pircuremix/AutoEnchanter-Forever`.
-3. Import, then right-click the installed addon and enable Auto Update. Refresh WowUp to check for a new release. Close WoW before updating and restart it afterwards.
-4. If import fails, download the ZIP asset from the latest GitHub release and extract it manually. Do not extract the separate `release.json` file.
+Message placeholders: `{customer}` (original chat name), `{player}` (character's first/name API value), `{zone}` (current zone). Unknown placeholders remain literal. Expanded text over 255 bytes is skipped, not truncated. Empty/whitespace-only text disables sending but not marking. Channel selection is automatic; no public-chat or whisper fallback.
 
-Releases contain `AutoEnchanter-<version>.zip` and `release.json`, which maps that exact ZIP name to flavor `forever` and interface 16001 (or the current interface read from the TOC). This allows compatible WowUp versions to select the correct package without the old `-forever.zip` suffix. WowUp v2.25.5 uses the asset filename as its version label, so the `.zip` extension will still appear. Older WowUp builds that require the suffix may need updating. The package targets Forever only; do not install it on other clients.
+Example: `Welcome {customer}! Please come to me in {zone} and open trade when ready.`
 
-For each future release, increment the TOC version and synchronize the Lua version strings before committing to main. The release workflow tests Lua 5.1 and 5.4, builds and validates the ZIP and release metadata, and publishes a new release without overwriting an existing version. It runs on changes to the TOC on main, or manually from Actions > Publish Forever release. The ZIP contains only the Lua, TOC and BLP files under the addon folder; settings, tests and metadata are excluded. The 64×64 BLP2 custom icon and Professions category are unchanged.
+Checkboxes and marker/threshold choices save immediately. The welcome text is saved explicitly. If the Settings API is unavailable, the slash commands below configure the same database. Settings changes take effect on subsequent roster events; disabling the addon or entering debug clears pending customer actions. Start with `/ae debug on` and use the live checklist before enabling real actions with `/ae debug off`.
 
-For troubleshooting, update verification, metadata details and maintainer instructions, see [WowUp integration guide](docs/WOWUP.md). Official guide: https://wowup.io/guide/get-addons/overview
+### Group behavior
+
+An invite request is not proof of acceptance. The addon records only a real, nonfailed invite call with a readable GUID and a prior negative membership check. On roster events it matches that GUID to another group member. Pending records expire after 120 seconds and are bounded to 128. A customer who declines, never joins, or joins after expiry is not welcomed. A manual invite to someone with an existing matching pending request cannot be distinguished from that request. No name-only fallback is used.
+
+For example, with all three features enabled and threshold 3:
+
+1. First customer joins: welcome in PARTY and request self-marker only if safe.
+2. Second customer joins: party reaches three actual members; request conversion once. Hold the welcome until raid membership is observed or five seconds elapse.
+3. If conversion is observed, welcome in RAID; otherwise send through the current confirmed group type, provided the customer is still present. Subsequent customers in the raid receive RAID messages.
+4. When people leave, the addon never converts a raid back to a party.
+
+Automatic conversion also applies to ordinary parties with manually invited members if the feature is enabled, including on entering the world or a leader change. It is not limited to an enchanting session. It is not attempted inside an instance or in instance groups, or by nonleaders. The welcome system skips instance groups; it never uses INSTANCE_CHAT. Native confirmation prompts are respected; conversion may interrupt ordinary quest progress. An outstanding conversion is not repeatedly requested. See [architecture](docs/ARCHITECTURE.md) for state and timing details.
+
+### Saved settings and TBC migration
+
+Account-wide `AutoEnchanterDB` remains the only SavedVariables table. New fields are initialized without replacing valid old whitelist/settings. Pending requests, timers, block flags and counters are session-only. To copy a TBC whitelist, close both clients, back up the destination, and copy the old account's SavedVariables/AutoEnchanter.lua into the equivalent Forever account directory. Do not confuse it with addon source. Copying replaces the destination table. Never upload real SavedVariables or chat logs.
 
 ## Commands
 
-Both `/ae` and `/autoenchanter` work.
+Both `/ae` and `/autoenchanter` are supported.
 
 | Command | Behavior |
 |---|---|
-| `/ae on`, `/ae enable` | Enable matching and invite processing. |
-| `/ae off`, `/ae disable` | Disable invite processing; learning may continue. |
-| `/ae add <phrase>` | Store original phrase; reject empty or duplicate normalized keys. |
-| `/ae remove <index or phrase>` | Remove one entry and rebuild lookup. |
-| `/ae list` | Display original entries and their normalized keys. |
-| `/ae test <phrase>` | Show MATCH or NO MATCH and normalized key; never invites. |
-| `/ae debug on` | Dry run; logs matching and nonmatching phrases, no real calls. |
-| `/ae debug off` | Call the native invite API when eligible. |
-| `/ae debug` | Toggle debug. |
-| `/ae popup on/off` | Enable or disable learning menu; without argument toggles. |
-| `/ae status` | Counters and switches for this session. |
-| `/ae diagnostics` or `/ae diag` | Client version/build/interface, available APIs, block state, simulations, failed and ineligible calls. |
+| `/ae on`, `/ae enable` | Enable addon |
+| `/ae off`, `/ae disable` | Disable live actions and clear pending welcomes |
+| `/ae add <phrase>` | Add an exact normalized whitelist phrase |
+| `/ae remove <index or phrase>` | Remove an entry |
+| `/ae list` | List phrases and normalized keys |
+| `/ae test <phrase>` | Inspect match without inviting |
+| `/ae debug [on/off]` | Simulation mode; no actual invites, chat, markers or conversion |
+| `/ae popup [on/off]` | Right-click whitelist learning |
+| `/ae settings`, `/ae config` | Open native settings |
+| `/ae welcome on/off` | Enable or disable welcome chat |
+| `/ae message <text>` | Save welcome text (empty clears it) |
+| `/ae marker on/off/1-8` | Toggle or enable/select self-marker |
+| `/ae raid on/off/2-5` | Toggle or enable/set conversion threshold |
+| `/ae groupstatus` | Group settings, pending records and action counters |
+| `/ae status` | Original matching/invite counters |
+| `/ae diagnostics`, `/ae diag` | Client build, invite availability and group diagnostics |
 
-## System design
-
-```text
-CHAT_MSG_CHANNEL / CHAT_MSG_SAY / CHAT_MSG_YELL
-    -> Reject protected payloads, non-General/Trade channels, self messages
-    -> Cache most recent eligible message for right-click learning (if enabled)
-    -> Check master switch and nonempty whitelist
-    -> Normalize incoming text
-    -> Exact hash lookup against normalized whitelist
-    -> Per-name cooldown (7 seconds; no global delay)
-    -> Debug simulation OR native party eligibility checks
-    -> C_PartyInfo.InviteUnit(original chat author)
-    -> Log API call, never claim delivery confirmation
-```
-
-The addon has no polling loop, external dependencies, background service, web connection, or extra delay before the invite call. Normalization is proportional to message length; hash lookup is expected O(1), independent of whitelist size. A periodic cache cleanup occurs on chat events, not via a timer. The last-message cache keeps at most 2,048 names for up to 15 minutes (older entries can be evicted earlier at capacity). Cooldown records are also pruned. Counters reset on UI reload. Debug logging can be noisy in active chat; turn debug off for ordinary use only after the controlled test.
+## Matching and restrictions
 
 ### Matching rules
 
@@ -99,35 +111,37 @@ For a whitelist of `LF enchanter 15 agility gloves`, `LF enchater 15agi glove my
 
 When enabled, right-click learning adds the most recently cached eligible chat message from that full name, not necessarily the exact historical line clicked. The text is captured when the menu opens, and the entry is only offered for recent cached messages. This can work even with `/ae off`. If a client menu tag or identity format differs, use `/ae add <phrase>`; no invite depends on the menu. The Menu.ModifyMenu callback contract, registered unit menu tags, and Forever surname context field were source-checked; actual right-click behavior still needs live verification.
 
-### Invitation restrictions and diagnostics
+### Invitation restrictions and diagnostics (existing matcher)
 
 Native `C_PartyInfo.InviteUnit(targetName)` has a valid-target restriction and no return value confirming success. Party checks use `CanInvite()`, `IsPartyFull()` and `IsGUIDInGroup(guid)` where available. Errors and inaccessible values from available eligibility checks suppress invites; secret chat fields are never parsed. No legacy InviteUnit fallback or automatic confirmation is used. An explicit invite-related `ADDON_ACTION_BLOCKED` or `ADDON_ACTION_FORBIDDEN` attributed to AutoEnchanter disables further invite attempts for that UI session. A silent server rejection may not generate an observable block event. Use the game's native player menu or manually type `/invite` if appropriate; respect game restrictions. A matching chat author is not necessarily an eligible invite target. Debug mode cannot validate the actual invite call.
 
 `scanned` counts messages evaluated while enabled with a nonempty whitelist; `matches` counts matching evaluations before cooldown; `invite API calls` counts attempted native calls (including failures); `cooldown skips` counts repeated matches inside the per-name cooldown; `restricted` counts unreadable message/name/GUID payloads. Diagnostics additionally reports simulated, failed and ineligible counts. A blocked event may occur without an exception. None of these counters confirm receipt or acceptance.
 
+Group automation separately checks readable roster identity, chat lockdown, existing marks, raid permissions and native API outcomes. It never uses force-confirm conversion, automatically accepts a dialog, clears a raid marker, or retries blocked actions in a loop. Native calls are attempts, not proof of chat delivery, marker visibility or conversion; only a later observed raid state confirms conversion. Debug mode logs simulated invite and eligible conversion actions; because it sends no invites, it creates no real pending welcomes.
+
 ## Test and release procedure
 
-From the source repository root, run `lua5.1 tests/regression.lua` (or `lua5.4 tests/regression.lua`). CI runs both versions on pushes and pull requests. This audit executed the suite with Lua 5.4 in an offline mocked client, not Blizzard's runtime. See `API-AUDIT.md` and `TEST-RESULTS.txt`. GitHub Actions passed the Lua 5.1 and 5.4 regression matrix and the corrected release workflow for v1.3.2. See [CI run](https://github.com/Pircuremix/AutoEnchanter-Forever/actions/runs/45490266585) and [release run](https://github.com/Pircuremix/AutoEnchanter-Forever/actions/runs/45490266550). The mock covers event flow, aliases, price parsing, negative matches, duplicate entries, secret fields, channel numbering, name preservation, cooldown, full party, permission failure, existing members, debug, disabled mode, menus, missing APIs, errors and blocked invites. It also processes a 10,000-message unrelated workload. The mock does not reproduce Blizzard's protected runtime, native menu tag dispatch, real server responses, or network latency.
+Run `bash scripts/test.sh 5.1` and `bash scripts/test.sh 5.4` from the repository root (Lua and luac installed). Run `bash scripts/package.sh` with zip, unzip and jq installed. GitHub Actions executes both versions and validates the exact install archive before publication. The historic v1.3.0 local run remains in TEST-RESULTS.txt; current CI status is linked at the top. Offline mocks validate control flow, not Blizzard's protected runtime or server delivery.
 
-### Live acceptance checklist (not yet performed)
+### Live acceptance checklist
 
-1. `/console scriptErrors 1`, `/reload`, `/ae diagnostics`. Record the version/build/interface and verify native invite API and menu API are functions. Run `/ae list` and confirm expected entries.
-2. `/ae on`, `/ae debug on`. With a consenting second player, post an exact whitelisted request in Trade (including when Trade is not slot 2); repeat in General, Say and Yell. Verify the simulation log. Try a wrong enchant and a custom channel; neither should match.
-3. Check a two-part name, another player with the same first name if feasible, and right-click learning while disabled. Test `/ae test` and remove the temporary whitelist entries afterwards.
-4. `/ae debug off` with a consenting second player, outside restricted content. Wait over seven seconds after the previous match. Confirm **on the recipient's client** that the invitation arrives, not merely the API call log. Test a repeat inside the cooldown and a different player. Test full party, existing member, and lack of invite permission if feasible.
-5. If a game block occurs, verify the addon stops further attempts. Do not attempt to bypass it. Record `/ae status`, `/ae diagnostics`, exact error text, and the chat channel/name format (redact personal data as needed). Use debug on or disable until resolved.
-6. Logout/reload and confirm whitelist/settings survive. Restore your preferred settings.
+1. Restart WoW, enable Auto Enchanter and run `/console scriptErrors 1`, `/ae diagnostics`, `/ae list`. Verify the settings panel opens and saves; reload to confirm persistence.
+2. With consenting test players, verify whitelist match/debug behavior in General/Trade (including moved slots), Say/Yell, wrong requests and two-part names. Test right-click learning. Switch debug off only for the controlled live test.
+3. Enable welcome and self-marker. Send a valid invite but delay acceptance: no message or mark until the customer joins. Verify actual receipt on their client. Try unrelated/manual join, duplicate roster events, expired request and two different customers.
+4. Start unmarked; verify selected self-marker. Then manually set a different icon and invite another customer: it must remain unchanged. Check another party member holding the chosen icon. Test raid leader/assistant and nonleader behavior.
+5. Enable auto raid at 3. Invite two customers: at two total remain in a party, at three total request conversion once; confirm the raid appears before the second welcome is sent in RAID. Test an already formed raid, decline/confirmation cases, a threshold of 4, nonleader and group shrinking. Do not force-confirm or bypass a blocked action.
+6. If any action is blocked, record version, build, diagnostics, groupstatus and exact error (redact names). Disable the affected feature until resolved. Verify WowUp updates independently from in-game behavior.
 
-## Project layout
+**Live client acceptance of the new 1.4.0 features is not yet independently verified.** The API and mock checks are necessary but not sufficient.
 
-- `AutoEnchanter/`: only files required by the game.
-- `README.md`: documentation, commands, behavior and acceptance checklist.
-- `API-AUDIT.md`: source-backed interface review and remaining uncertainties.
-- `tests/regression.lua`: reproducible offline regression test.
-- `TEST-RESULTS.txt`: actual local run output.
-- `CHANGELOG.md`: release changes.
-- `docs/WOWUP.md`: install, auto-update, troubleshooting and packaging guide.
-- `.github/workflows/tests.yml`: automated checks for future changes.
-- `.github/workflows/release.yml`: regression-tested, versioned Forever releases.
+## Project documentation
 
-This repository is public. Never commit the `WTF` directory, real account SavedVariables, credentials or chat logs. No public distribution license has been assigned; public visibility alone does not grant permission to redistribute or modify the code. AutoEnchanter is an independent addon, not affiliated with Blizzard or WowUp.
+- [Architecture and contracts](docs/ARCHITECTURE.md)
+- [WowUp integration](docs/WOWUP.md)
+- [Version notes](docs/releases/README.md) — one file per published version
+- [Changelog](CHANGELOG.md) — chronological summaries
+- [API audit](API-AUDIT.md) — verified source and restrictions
+- [Maintainer / AI contributor guide](AGENTS.md)
+- `tests/`, `scripts/` and `.github/workflows/` — test and release tooling
+
+Public visibility does not assign a license. No redistribution license has been selected. Never commit real SavedVariables, credentials or private chat logs. Not affiliated with Blizzard or WowUp.

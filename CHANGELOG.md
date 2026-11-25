@@ -1,5 +1,17 @@
 # Changelog
 
+Detailed version notes are maintained under [docs/releases/](docs/releases/README.md). Dates refer to release history; availability is confirmed by GitHub Releases.
+
+## 1.4.0 — Customer welcome and raid management
+
+- Added confirmed-GUID customer acceptance tracking and editable PARTY/RAID welcome chat.
+- Added opt-in self-marker selection with existing-marker preservation.
+- Added opt-in automatic raid conversion at 3 total members by default; configurable 2–5.
+- Added native Settings panel, persistent options, slash fallbacks and group diagnostics.
+- Isolated group and settings modules; preserved existing matcher and saved whitelist.
+- Added integration tests, TOC-driven packaging, per-version release notes and maintainer/AI guide.
+- New features default off; live-client acceptance pending. [Detailed release notes](docs/releases/v1.4.0.md).
+
 ## Unreleased — documentation
 
 - Expanded public-facing README and added a dedicated WowUp integration and troubleshooting guide.

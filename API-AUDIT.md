@@ -40,3 +40,19 @@ Target: 1.60.1 / interface 16001. Release candidate 1.3.0. Reviewed v1.2 archive
 ## Risks and decisions
 
 A successful `pcall` cannot prove invite delivery. The engine may silently decline invalid targets; confirmation can be needed in some cases. Existing public chat and modern menu support do not guarantee every chat author is inviteable. The implementation does not try to change invite permissions or circumvent restrictions. Existing normalized exact-match semantics were intentionally retained, including aliases and filler tokens; no recipe-specific whitelist data was provided. Known matching collisions, English-only aliases and last-message learning semantics are documented. A 7-second cooldown applies to matches even when eligibility later fails, retaining the original anti-spam design. Offline tests are necessary but not sufficient to validate this addon; run the live checklist before relying on it.
+
+
+## 1.4.0 group automation extension
+
+Reviewed actual Forever branch source snapshots (same mirrored Blizzard-generated API source used in the original audit).
+
+| API | Evidence and implementation |
+|---|---|
+| GROUP_ROSTER_UPDATE, PARTY_LEADER_CHANGED, C_PartyInfo.ConvertToRaid() | [PartyInfoDocumentation.lua](https://github.com/Gethe/wow-ui-source/blob/forever/Interface/AddOns/Blizzard_APIDocumentationGenerated/PartyInfoDocumentation.lua), blob 39fc3adc4c7d8699e7be954c5dc641426bc4d22b. Roster event carries no member payload; inspect units. ConvertToRaid is restricted, may prompt, no success return. Never use ConfirmConvertToRaid. |
+| C_ChatInfo.SendChatMessage(message, chatType, languageID?, target?), InChatMessagingLockdown() | [ChatInfoDocumentation.lua](https://github.com/Gethe/wow-ui-source/blob/forever/Interface/AddOns/Blizzard_APIDocumentationGenerated/ChatInfoDocumentation.lua), blob 0767f5042a47b9fd03621044cc94f26390e08e2b. Chat call is restricted, no delivery return; check lockdown and only PARTY/RAID. |
+| GetRaidTargetIndex(target), SetRaidTarget(target,userIndex) | [RaidMarkersDocumentation.lua](https://github.com/Gethe/wow-ui-source/blob/forever/Interface/AddOns/Blizzard_APIDocumentationGenerated/RaidMarkersDocumentation.lua), blob 70f01983b6b644eabf75a43f6b17b13b6a621607. Getter may return secret; setter restricted. Check existing marker, use index 1–8 only. |
+| UnitGUID, UnitName, UnitIsGroupLeader, UnitIsGroupAssistant | [UnitDocumentation.lua](https://github.com/Gethe/wow-ui-source/blob/forever/Interface/AddOns/Blizzard_APIDocumentationGenerated/UnitDocumentation.lua), blob 620b28ad0cc57c13501a196a42c37b8398703a84. Identity/permissions may be secret. |
+| IsInGroup, IsInRaid, GetNumGroupMembers | [UnitPopupSharedButtonMixins.lua](https://github.com/Gethe/wow-ui-source/blob/forever/Interface/AddOns/Blizzard_UnitPopupShared/UnitPopupSharedButtonMixins.lua). Native group UI uses IsInRaid, IsInGroup(LE_PARTY_CATEGORY_INSTANCE), UnitIsGroupLeader for conversion visibility. |
+| Settings.RegisterCanvasLayoutCategory, RegisterAddOnCategory, OpenToCategory | [Blizzard_Settings.lua](https://github.com/Gethe/wow-ui-source/blob/forever/Interface/AddOns/Blizzard_Settings_Shared/Blizzard_Settings.lua), blob d3412da0be76c1fd965d7ac26413fa9967eda740. Native settings canvas and category ID. Slash fallback if panel registration fails. |
+
+The marker selector uses native raid-target texture helper when present (otherwise 4x4 texture coordinates). C_Timer.After supplies one bounded conversion wait, not polling. Ordinary group APIs are checked at runtime. A confirmation prompt or a successful void call is not proof of action completion. Only readable roster state establishes customer membership and observed raid conversion. Tests emulate secret values, errors, blocked actions, permission changes and synchronous/asynchronous roster updates; they cannot reproduce actual client restrictions, protected native menu behavior or server delivery. In-game acceptance of these additions remains pending.

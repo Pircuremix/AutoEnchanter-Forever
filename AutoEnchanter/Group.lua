@@ -214,7 +214,7 @@ function Group:OnRoster()
     local db = self.db
     self:Prune(GetTime())
     if not db.enabled then self:ClearPending(); return end
-    if not (db.autoRaidEnabled or db.welcomeEnabled or db.autoMarkerEnabled) and not self.waiting then return end
+    if not (db.autoRaidEnabled or db.welcomeEnabled or db.autoMarkerEnabled) and not self.waiting and not self.latch and not self.simLatch then return end
     local state = groupState()
     if not state then return end
     if self.waiting and not db.autoRaidEnabled then self:CancelWait() end
