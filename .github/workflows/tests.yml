@@ -10,9 +10,9 @@ jobs:
         lua: ['5.1', '5.4']
     steps:
       - uses: actions/checkout@v4
-      - name: Install Lua
-        run: sudo apt-get update && sudo apt-get install -y lua${{ matrix.lua }}
-      - name: Validate syntax
-        run: luac${{ matrix.lua }} -p AutoEnchanter/AutoEnchanter.lua
-      - name: Regression tests
-        run: lua${{ matrix.lua }} tests/regression.lua
+      - name: Install Lua and packaging tools
+        run: sudo apt-get update && sudo apt-get install -y lua${{ matrix.lua }} zip jq
+      - name: Syntax and regression tests
+        run: bash scripts/test.sh ${{ matrix.lua }}
+      - name: Validate release package
+        run: bash scripts/package.sh

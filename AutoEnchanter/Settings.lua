@@ -49,7 +49,8 @@ function UI:Init(group, log)
             icon:SetSize(18,18); icon:SetPoint("LEFT",b,"LEFT",6,0)
             icon:SetTexture("Interface\\TargetingFrame\\UI-RaidTargetingIcons")
             local col,row=(i-1)%4,math.floor((i-1)/4)
-            icon:SetTexCoord(col/4,(col+1)/4,row/2,(row+1)/2)
+            if type(SetRaidTargetIconTexture)=="function" then SetRaidTargetIconTexture(icon,i)
+            else icon:SetTexCoord(col/4,(col+1)/4,row/4,(row+1)/4) end
             b:SetText("    "..labels[i]); markerButtons[i]=b
             b:SetScript("OnClick",function() group:Set("raidMarker",index); self:Refresh() end)
         end

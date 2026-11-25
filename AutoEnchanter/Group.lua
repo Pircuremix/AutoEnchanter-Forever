@@ -48,7 +48,9 @@ function Group:ConfigChanged()
         self.pending, self.joined = {}, {}
     end
     if not self.db.enabled or not self.db.autoRaidEnabled or self.db.debug then
-        self:CancelWait()
+        -- An already queued welcome is flushed by the existing one-shot timer
+        -- or the next roster event even if auto-raid is switched off.
+        if not self.db.enabled or self.db.debug then self:CancelWait() end
     end
     if not self.db.debug then self.simLatch = false end
 end
@@ -142,8 +144,8 @@ function Group:SendWelcome(entry, state)
         self.log("Welcome skipped: expanded message exceeds 255 bytes or contains control characters.")
         return
     end
-    local _, success = safe(C_ChatInfo and C_ChatInfo.SendChatMessage, msg, state.raid and "RAID" or "PARTY")
-    if success and not self.chatBlocked then stats.welcomes=stats.welcomes+1
+    local result, success = safe(C_ChatInfo and C_ChatInfo.SendChatMessage, msg, state.raid and "RAID" or "PARTY")
+    if success and result ~= false and not self.chatBlocked then stats.welcomes=stats.welcomes+1
     else stats.chatSkipped=stats.chatSkipped+1; self.log("Welcome chat call unavailable or blocked; no retry.") end
 end
 function Group:MarkSelf(state)
@@ -163,8 +165,8 @@ function Group:MarkSelf(state)
     -- Recheck self immediately before the call. Never set 0 or toggle.
     local current, currentOK = safe(GetRaidTargetIndex, "player")
     if not currentOK or (current ~= nil and current ~= 0) then skip(); return end
-    local _, success = safe(SetRaidTarget, "player", db.raidMarker)
-    if success and not self.markerBlocked then stats.marks=stats.marks+1
+    local result, success = safe(SetRaidTarget, "player", db.raidMarker)
+    if success and result ~= false and not self.markerBlocked then stats.marks=stats.marks+1
     else skip(); self.log("Self-marker call unavailable or blocked; no retry.") end
 end
 function Group:Flush(state)
@@ -172,10 +174,11 @@ function Group:Flush(state)
     self.joined = {}
     if not self.db.enabled or self.db.debug or not state or state.count == 0 then return end
     for guid, entry in pairs(ready) do
-        if state.members[guid] then
-            self:MarkSelf(state)
+        local current = groupState()
+        if current and current.members[guid] then
+            self:MarkSelf(current)
             -- Re-read group mode after marking, not the mode at invite time.
-            local current = groupState()
+            current = groupState()
             if current and current.members[guid] then self:SendWelcome(entry,current) end
         end
     end
@@ -186,8 +189,8 @@ function Group:RequestRaid()
     self.generation = self.generation + 1
     local generation = self.generation
     self.stats.conversions = self.stats.conversions + 1
-    local _, ok = safe(C_PartyInfo and C_PartyInfo.ConvertToRaid)
-    if not ok or self.raidBlocked then
+    local result, ok = safe(C_PartyInfo and C_PartyInfo.ConvertToRaid)
+    if not ok or result == false or self.raidBlocked then
         self:CancelWait()
         self.log("Raid conversion unavailable or blocked; use the native group menu if desired.")
         return
@@ -211,8 +214,10 @@ function Group:OnRoster()
     local db = self.db
     self:Prune(GetTime())
     if not db.enabled then self:ClearPending(); return end
+    if not (db.autoRaidEnabled or db.welcomeEnabled or db.autoMarkerEnabled) and not self.waiting then return end
     local state = groupState()
     if not state then return end
+    if self.waiting and not db.autoRaidEnabled then self:CancelWait() end
     if state.count == 0 then
         self.latch, self.simLatch = false,false
         self.joined = {}; self:CancelWait()
