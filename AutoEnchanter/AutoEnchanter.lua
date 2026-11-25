@@ -395,7 +395,7 @@ local function CanInviteNow(playerShort)
 end
 
 -- Native invite only. A successful Lua call is not server confirmation.
-local lastAttempt, lastAttemptTime, inviteBlocked
+local lastAttempt, lastAttemptTime, inviteBlocked, inviteInFlight
 local function DoInvite(playerName, guid)
     if db.debug then
         stats.simulated = stats.simulated + 1
@@ -441,7 +441,9 @@ local function DoInvite(playerName, guid)
     end
     lastAttempt, lastAttemptTime = playerName, GetTime()
     stats.attempted = stats.attempted + 1
+    inviteInFlight = true
     local ok, result = pcall(invite, playerName)
+    inviteInFlight = false
     if inviteBlocked then ledger:Record(playerName,guid,"failed",false); return end
     if not ok or not readable(result) or result == false then
         stats.failed = stats.failed + 1
@@ -749,7 +751,7 @@ frame:SetScript("OnEvent", function(self, event, ...)
         if db and readable(source) and readable(action) and (source == addonName or source == "AutoEnchanter") and type(action) == "string" then group:Blocked(action) end
         if readable(source) and readable(action) and (source == addonName or source == "AutoEnchanter") and type(action) == "string" and action:lower():find("invite", 1, true) and not inviteBlocked then
             inviteBlocked = true
-            if db then ledger:FailRecent() end
+            if db and not inviteInFlight then ledger:FailRecent() end
             printSys("Game blocked automatic invites. No further attempts this session; use the native player menu or /invite.")
             if lastAttempt and GetTime() - lastAttemptTime < 10 then printSys("Last matching customer: " .. lastAttempt) end
         end

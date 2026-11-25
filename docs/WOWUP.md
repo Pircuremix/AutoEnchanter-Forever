@@ -1,6 +1,6 @@
 # WowUp installation and release integration
 
-AutoEnchanter targets **World of Warcraft: Forever** (client interface 16001 as of v1.4.0). The GitHub repository is public, so a personal access token is not needed for ordinary installation.
+AutoEnchanter targets **World of Warcraft: Forever** (client interface 16001 as of v1.5.0). The GitHub repository is public, so a personal access token is not needed for ordinary installation.
 
 ## Install with WowUp
 
@@ -78,3 +78,5 @@ Manual fallback: download the named addon ZIP from Releases and extract it into 
 6. Check both assets and the workflow result, then perform the WowUp verification above. Record live results separately from automated CI results.
 
 For v1.3.2 the corrected [release run](https://github.com/Pircuremix/AutoEnchanter-Forever/actions/runs/45490266550) and [regression run](https://github.com/Pircuremix/AutoEnchanter-Forever/actions/runs/45490266585) completed successfully; [the published release](https://github.com/Pircuremix/AutoEnchanter-Forever/releases/tag/v1.3.2) contains both assets. An earlier release attempt failed due to shell quoting and was corrected. The owner subsequently confirmed the v1.3.2 WowUp automatic update worked. Live game behavior is still a separate acceptance test.
+
+From 1.5.0 the package also contains Database.lua, Trade.lua, Dashboard.lua and Minimap.lua. TOC-driven packaging includes all runtime files. Customer ledger is local SavedVariables and is not part of a release asset. Back up SavedVariables before migration, restart WoW after update, and verify /ae diagnostics. Do not delete SavedVariables as an update troubleshooting step.

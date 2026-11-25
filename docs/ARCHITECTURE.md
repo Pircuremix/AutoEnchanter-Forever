@@ -1,6 +1,6 @@
 # Architecture and maintenance contracts
 
-Source version: 1.4.0. Forever interface 16001. This document describes actual implementation, not a design proposal.
+Source version: 1.5.0. Forever interface 16001. This document describes actual implementation, not a design proposal.
 
 ## Runtime layout and load order
 
@@ -8,13 +8,17 @@ The TOC is authoritative. WoW calls each Lua chunk with addon name and the same 
 
 | File | Responsibility |
 |---|---|
+| AutoEnchanter/Database.lua | Persistent invitation ledger and active visit correlation, exposes ns.Database |
+| AutoEnchanter/Trade.lua | Read-only transaction snapshot and completion evidence, exposes ns.Trade |
+| AutoEnchanter/Dashboard.lua | Lazy paginated dashboard, sorting, export and confirmed deletion, exposes ns.Dashboard |
+| AutoEnchanter/Minimap.lua | Named minimap button, toggle and context menu, exposes ns.Minimap |
 | AutoEnchanter/Group.lua | Owns group state, setting validation, pending GUID tracking, roster reconciliation, welcome, marker, raid conversion, counters and slash command handlers; exposes ns.Group |
 | AutoEnchanter/Settings.lua | Native Settings canvas, saves through Group:Set; exposes ns.Options |
 | AutoEnchanter/AutoEnchanter.lua | Original chat events, normalization, whitelist, invite eligibility, native invite call, right-click learning, DB migration, slash/event dispatch |
 | AutoEnchanter/AutoEnchanterIcon.blp | Native 64x64 BLP2 icon, referenced by TOC |
 | AutoEnchanter/AutoEnchanter.toc | Load order, interface, version, category and SavedVariables |
 
-No external library, network, OnUpdate or recurring timer. A single conversion timeout is the only new scheduled callback. Modules use local helpers and the private namespace, not new public globals.
+No external library, network, OnUpdate or recurring polling. Bounded one-shot callbacks handle conversion, nearest invitation expiration, trade close grace period and coalesced visible dashboard refresh. Modules use local helpers and the private namespace, not new public globals.
 
 ## Event and invite contract
 
@@ -63,3 +67,16 @@ Validate types/ranges at initialization and via Group:Set. Invalid values get de
 ## Testing / release
 
 tests/regression.lua retains original matching, invite and menu behavior; tests/group.lua exercises real module/core callbacks against mocked APIs, including native Settings controls. scripts/test.sh validates every runtime/test Lua file then runs both suites. scripts/package.sh reads the TOC to include every Lua module plus the TOC and BLP, rejects unlisted Lua files, validates ZIP and writes explicit Forever release.json. Workflows run tests on both Lua 5.1 and 5.4; release publishes from main only on versioned changes, with notes from docs/releases/v<version>.md. See AGENTS.md for update policy. Live client tests remain required for restrictions, UI layout and server delivery.
+
+
+## 1.5.0 durable business ledger contracts
+
+The core calls Database:Record **after** the native invite, independently of the session-only Group:TrackInvite used for optional welcome and marker actions. Do not put history scans or UI work before InviteUnit. The ledger uses one pending index by invitation ID and one active visit per GUID for the currently logged-in enchanter, reconstructed on first roster reconciliation. Overlapping requests may only yield one acceptance; older ones are superseded rather than falsely declined. Explicit system declines resolve the newest unambiguous pending full-name match. Failed calls and unknown identity/prior membership remain distinct. Expiration uses a single nearest-deadline timer (120 seconds); no recurring poll. Native delivery and causation are not proven by the Lua call.
+
+Group events reconcile both modules independently. Master-off/debug disables new requests and all group automation but existing ledger outcomes and passive trade observations continue. No synthetic records for debug or suppressed invitations. See [DATABASE.md](DATABASE.md) for schema, state transitions, privacy, and migration.
+
+Trade observes TRADE_SHOW, offer changes, both-accepted snapshots, explicit localized completion/cancel messages and TRADE_CLOSED (two-second grace). The trade's captured NPC GUID and active visit reference are the only attribution keys. No target-name guess or wallet delta. No trade interaction is automated. The final non-traded target-slot enchant (return #6) contributes at most one service on confirmed trade. Ambiguous snapshots are recorded with zero totals. See [TRADE-TRACKING.md](TRADE-TRACKING.md).
+
+Dashboard builds only when opened, reuses settings controls, pages eight customers/six invitations, sorts computed rows and coalesces visible refresh on mutations. No database scan on unrelated public chat. Named 30px minimap button is a direct child of Minimap; third-party layouts can reparent it. All enable/disable operations route through the existing slash handler. See [UI-COMPATIBILITY.md](UI-COMPATIBILITY.md).
+
+The new SavedVariables fields are customerLedger (schema 1), minimapHidden (false), dashboardPosition (x/y/scale). Unknown future ledger schemas are preserved and not modified. Tests/business.lua covers database, trade, dashboard model and minimap dispatch; runtime tests also validate original core/group behavior. Real trade event ordering and visual layout require live testing.

@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.5.0 — Customer database and business dashboard
+
+### Added
+- Persistent versioned local customer ledger, individual invitation history, full local timestamp and enchanter identity.
+- Accepted/declined/expired tracking with failure, unverified and overlap distinctions.
+- Conservative completed-trade tip and delivered enchant accounting, per-item weighted averages.
+- Searchable, sortable, paginated dashboard with filters, overview, shared settings, TSV export and confirmed deletion/reset.
+- Standard minimap button, Shift-left toggle and dynamic two-option menu; documented EllesmereUI Free Move conflict.
+- Trade trace, ledger diagnostics, business regression suite, schema/API/UI documentation and version notes.
+
+### Changed
+- Core records real invite attempts after native call independently of welcome/marker settings; preserves old matcher and group automation.
+- /ae settings and /ae config open the dashboard Settings tab; native Blizzard category retained.
+- TOC includes four additional modules; existing package script includes them automatically.
+
+### Known limitations
+- Live trade success signal and UI rendering require acceptance testing; uncertain transactions excluded from totals. [Detailed notes](docs/releases/v1.5.0.md).
+
 Detailed version notes are maintained under [docs/releases/](docs/releases/README.md). Dates refer to release history; availability is confirmed by GitHub Releases.
 
 ## 1.4.0 — Customer welcome and raid management

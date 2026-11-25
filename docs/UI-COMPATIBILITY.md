@@ -1,0 +1,15 @@
+# Dashboard and minimap compatibility
+
+## Dashboard
+
+/ae database or /ae dashboard opens Customers. /ae settings or /ae config opens Settings. The native Blizzard AddOns settings entry is retained, sharing its existing group controls. The independent dark window has Overview, Customers, Settings; status button toggles master AE. Click sortable headings, search full names, cycle customer/date filters, page customer and visit rows. Selected filters feed Overview and TSV export. The window supports title-bar dragging, saved position and +/- scale controls. Fixed logical grid fits UI canvas; no permanent OnUpdate. Visible refreshes are coalesced after ledger mutation. Unverified trade counts are shown per invitation. UI layout is mocked/model-tested but not visually verified in the game.
+
+Delete selected and Reset database are two-click confirmation operations; selection/tab/window close clears confirmation. Export is a local editable TSV field; use Ctrl+A/Ctrl+C. It is not a full backup, and large text may be constrained by client edit-box limits.
+
+## Minimap
+
+AutoEnchanterMinimapButton is a named 30px Button created as a direct child of Minimap, using the existing BLP icon and enabled status dot. It is intentionally not a custom map pin or repeatedly reanchored frame. Left-click toggles dashboard; Shift-left toggles the existing AE master switch; right-click opens precisely Turn AutoEnchanter ON/OFF and Open configuration / database. Native MenuUtil.CreateContextMenu with local two-button fallback. /ae minimap show/hide controls visibility; use slash commands if hidden or an external skin manages visibility. Stock placement is fixed; EllesmereUI manages repositioning/grouping.
+
+Source: [EllesmereUI EUI_Minimap_Buttons.lua](https://github.com/EllesmereGaming/EllesmereUI/blob/main/EllesmereUIMinimap/EUI_Minimap_Buttons.lua), blob d06bd33d5b832fdc1ac3a7a00aa2ae56ee3a53d2. Its discovery scans Minimap and flyout children, named Button frames >=20px initially, and LibDBIcon frames. Its Free Move Buttons hook intercepts Shift-left mouse down and suppresses the original OnClick even without meaningful movement. To use AE Shift-left toggle, disable EllesmereUI Free Move Buttons; right-click and /ae on/off remain alternatives. Do not override its hooks or fight layout ownership. [Flyout source](https://github.com/EllesmereGaming/EllesmereUI/blob/main/EllesmereUIMinimap/EUI_Minimap_Flyout.lua), blob c3893109186c1518ae60d6e54efd7c4d18eb464a. Native menu signature checked against [Forever MenuUtil.lua](https://github.com/Gethe/wow-ui-source/blob/forever/Interface/AddOns/Blizzard_Menu/MenuUtil.lua).
+
+Live verification: stock and EllesmereUI loaded, normal grouping/flyout discovery, hover, left, Shift-left with Free Move off, right menu dynamic labels, reload, hidden/shown. Third-party code can change; no guarantee across every version or skin. No external library dependency.
