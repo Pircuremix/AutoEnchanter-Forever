@@ -4,6 +4,7 @@ These records supplement historical release notes with actual CI and publication
 
 | Release | Automated verification | Publication | Live status |
 |---|---|---|---|
+| [1.6.1](v1.6.1.md) | 230 checks per Lua runtime; package verified | Confirmed | Pending |
 | [1.6.0](v1.6.0.md) | 201 checks per Lua runtime; package verified | Confirmed | Pending |
 | [1.5.0](../releases/v1.5.0.md) | [CI](https://github.com/Pircuremix/AutoEnchanter-Forever/actions/runs/45543016703), 150 per runtime | [Release workflow](https://github.com/Pircuremix/AutoEnchanter-Forever/actions/runs/45543071779) | Pending |
 | [1.4.0](../releases/v1.4.0.md) | [CI](https://github.com/Pircuremix/AutoEnchanter-Forever/actions/runs/45540445595), 101 per runtime | [Release workflow](https://github.com/Pircuremix/AutoEnchanter-Forever/actions/runs/45540540070) | Pending |
