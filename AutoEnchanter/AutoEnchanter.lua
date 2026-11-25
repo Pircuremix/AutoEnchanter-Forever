@@ -640,6 +640,7 @@ SlashCmdList["AUTOENCHANTER"] = function(msg)
         db.enabled = false
         minimap:Refresh(); dashboard:Refresh()
         group:ClearPending()
+        ledger:ClearManualActions()
         group:ConfigChanged()
         printSys("Auto Enchanter -> DISABLED")
         AE_Debug("Addon disabled via slash")
@@ -659,6 +660,7 @@ SlashCmdList["AUTOENCHANTER"] = function(msg)
         else
             db.debug = not db.debug
         end
+        if db.debug then ledger:ClearManualActions() end
         group:ConfigChanged()
         printSys("DEBUG -> " .. (db.debug and "ON" or "OFF"))
         return

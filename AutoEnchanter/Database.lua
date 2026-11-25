@@ -28,6 +28,7 @@ function D:Init(db,log)
     self.ledger=self.ready and l or nil
     self.pending,self.active,self.pendingKeys,self.manualNames={},{},{},{}
     self.activeOwner=nil
+    self.manualActions={}
     self.revision=0; self.timerGeneration=0; self.timerAt=nil
     if not self.ready then log("Customer ledger schema unsupported; preserved without modification."); policy:Init(self); return end
     -- Rebuild session indexes from records; never rewrite historical outcomes.
@@ -96,6 +97,7 @@ function D:Resolve(p,status,now,reason)
     local key=v.owner..":"..p.guid; local count=(self.pendingKeys[key] or 1)-1
     self.pendingKeys[key]=count>0 and count or nil
     self:IndexManual(v,-1)
+    if status~="accepted" then self.manualActions[v.id]=nil end
     if not v.identityUnverified then policy:Outcome(p.guid,v,status,now) end
     self:Touch()
 end
@@ -139,6 +141,7 @@ function D:Record(name,guid,status,trackable,guild,whisper,source,sentConfirmed)
         self.pending[v.id]={guid=key,visit=v}
         local pk=own..":"..key; self.pendingKeys[pk]=(self.pendingKeys[pk] or 0)+1
         self:IndexManual(v,1)
+        if manual then self.manualActions[v.id]=true end
         -- Only the latest outstanding request can receive one acceptance.
         self:Expire()
         if (validGUID and safe(C_PartyInfo and C_PartyInfo.IsGUIDInGroup,guid)==true) or (manual and not validGUID) then self:OnRoster() end
@@ -168,6 +171,29 @@ local function rosterNames(own)
         end
     end
     return out
+end
+function D:RosterIdentity(name)
+    if not text(name) then return end
+    local member=rosterNames(owner())[namekey(name)]
+    if member and not member.ambiguous then return member.guid end
+end
+function D:ClearManualActions()
+    self.manualActions={}
+end
+function D:ManualWelcome(guid,v)
+    if not self.manualActions[v.id] then return end
+    local function run()
+        if not self.manualActions[v.id] then return end
+        self.manualActions[v.id]=nil
+        if self.active[guid]==v and self.db.enabled and not self.db.debug and ns.Group then
+            ns.Group:TrackInvite(v.name,guid)
+        end
+    end
+    -- Never call marking/chat automation directly from a protected native post-hook.
+    if ns.InviteResults and ns.InviteResults.inHook then
+        if C_Timer and type(C_Timer.After)=="function" then C_Timer.After(0,run)
+        else self.manualActions[v.id]=nil end
+    else run() end
 end
 function D:BindManual(p,guid,full)
     local v=p.visit
@@ -235,7 +261,7 @@ function D:OnRoster()
         for _,other in pairs(self.pending) do
             if other.guid==guid and other.visit.owner==own then self:Resolve(other,"superseded",now,"overlapping invite; acceptance attributed to latest") end
         end
-        if p.visit.source=="manual" and ns.Group then ns.Group:TrackInvite(p.visit.name,guid) end
+        if p.visit.source=="manual" then self:ManualWelcome(guid,p.visit) end
     end
     for guid,v in pairs(self.active) do
         if v.owner~=own or safe(check,guid)==false then
@@ -349,12 +375,13 @@ function D:Rows(since)
 end
 function D:Delete(guid)
     if not self.ready or not self.ledger.customers[guid] then return end
-    for id,p in pairs(self.pending) do if p.guid==guid then self:IndexManual(p.visit,-1); self.pendingKeys[p.visit.owner..":"..guid]=nil; self.pending[id]=nil end end
+    for id,p in pairs(self.pending) do if p.guid==guid then self.manualActions[id]=nil; self:IndexManual(p.visit,-1); self.pendingKeys[p.visit.owner..":"..guid]=nil; self.pending[id]=nil end end
+    local active=self.active[guid]; if active then self.manualActions[active.id]=nil end
     self.active[guid]=nil; policy.settling[guid]=nil; self.ledger.customers[guid]=nil; self:Touch(); self:Schedule()
 end
 function D:Reset()
     if not self.ready then return end
-    self.ledger.customers={}; self.pending,self.active,self.pendingKeys,self.manualNames={},{},{},{}; policy.settling={}; self:Touch(); self:Schedule()
+    self.ledger.customers={}; self.pending,self.active,self.pendingKeys,self.manualNames={},{},{},{}; self:ClearManualActions(); policy.settling={}; self:Touch(); self:Schedule()
 end
 function D:Now() return clock() end
 function D:Stamp(t) return localstamp(t) end

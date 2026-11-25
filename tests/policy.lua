@@ -189,7 +189,17 @@ reset(); guilded=true; guildMembers={"self","a"}; fire("PLAYER_GUILD_UPDATE"); f
 C_PartyInfo.InviteUnit("a"); advance(0); join("a"); service("a",0,1,true,true); leave()
 check("known guild manual invite whisper and exemption",messages[1].channel=="WHISPER" and messages[2].channel=="PARTY" and P:Get("a").freeEnchants==1 and P:Get("a").dayCount==0)
 reset(); C_PartyInfo.InviteUnit("a"); local saved=AutoEnchanterDB; reset(saved); join("a")
-check("saved manual pending reconciled after reload",visit("a").source=="manual" and visit("a").status=="accepted")
+check("saved manual pending reconciled after reload",visit("a").source=="manual" and visit("a").status=="accepted" and #messages==0)
+reset(); C_PartyInfo.InviteUnit("a"); join("a"); fire("CHAT_MSG_SYSTEM","You have invited a to join your group."); advance(0)
+check("late duplicate sent evidence for active manual customer ignored",#D.ledger.customers.a.visits==1 and #messages==1)
+reset(); join("a"); behavior="unknown"; C_PartyInfo.InviteUnit("a")
+check("unconfirmed manual request to existing group member not accepted",not next(D.ledger.customers))
+reset(); C_PartyInfo.InviteUnit("a"); SlashCmdList.AUTOENCHANTER("off"); SlashCmdList.AUTOENCHANTER("on"); join("a")
+check("master off clears manual pending welcome but preserves acceptance",visit("a").status=="accepted" and #messages==0)
+reset(); C_PartyInfo.InviteUnit("a"); SlashCmdList.AUTOENCHANTER("debug on"); SlashCmdList.AUTOENCHANTER("debug off"); join("a")
+check("debug clears manual pending welcome but preserves acceptance",visit("a").status=="accepted" and #messages==0)
+reset(); behavior="grouped"; C_PartyInfo.InviteUnit("a"); fire("CHAT_MSG_SYSTEM","a is already in a group."); behavior="unknown"; C_PartyInfo.InviteUnit("a")
+check("duplicate named error not recycled onto next manual invite",D.ledger.customers["manual:a"].visits[2].status=="pending")
 -- Actual hot-path benchmark, mock native API. Preexisting history lookup by GUID;
 -- synchronous grouped result avoids building thousands of active requests.
 for _,n in ipairs({1000,10000,50000}) do

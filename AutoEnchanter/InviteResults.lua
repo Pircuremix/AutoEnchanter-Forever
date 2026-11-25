@@ -85,6 +85,8 @@ function R:Identity(name)
             end
         end
     end
+    local rosterGUID=self.ledger:RosterIdentity(name)
+    if rosterGUID then return rosterGUID end
     local cached=self.identities[wanted]
     if cached and not cached.ambiguous and GetTime()-cached.at<=900 then return cached.guid end
 end
@@ -127,6 +129,10 @@ function R:Observe(name,fallback)
     if guid then guild=ns.Guild:Membership(guid) end
     local visit=self.ledger:Record(name,guid,status,member==false or sent and member==true,guild,nil,"manual",sent)
     if not visit then return end
+    if note and note.message and note.status~="sent" then
+        local t=self.ledger:Now()
+        if t then self.lastResult={message=note.message,at=t} end
+    end
     self.manualObserved=self.manualObserved+1
     if fallback then self.manualFallback=self.manualFallback+1 end
     if guid and (visit.status=="pending" or visit.status=="accepted") and guild==true then
@@ -150,21 +156,25 @@ function R:InstallManualHooks()
         if type(C_PartyInfo[method])=="function" then
             local ok=pcall(hooksecurefunc,C_PartyInfo,method,function(name)
                 if self.queue or self.replaying then return end
+                self.inHook=true
                 local success=pcall(self.Observe,self,name,false)
+                self.inHook=false
                 if not success then self.manualErrors=self.manualErrors+1 end
             end)
             if ok then self.manualHookCount=self.manualHookCount+1 end
         end
     end
 end
-function R:NoteManual(name,status)
+function R:NoteManual(name,status,message)
     if self.replaying or not self:Enabled() or not validName(name) then return end
     local k=key(name); local t=GetTime()
+    -- Recent unmatched auto results are not safe evidence for a new manual call.
+    if self.recentAuto[k] and t-self.recentAuto[k]<=120 then return end
     if not self.notePrune or t>=self.notePrune then
         for n,v in pairs(self.manualNotes) do if t-v.at>2 then self.manualNotes[n]=nil end end
         self.notePrune=t+2
     end
-    local note={status=status,at=t}; self.manualNotes[k]=note
+    local note={status=status,at=t,message=message}; self.manualNotes[k]=note
     -- If no observable hook runs, an outgoing localized sent message is enough
     -- to start an attempt. An unmatched failure alone is never a manual attempt.
     if status=="sent" and not (self.recentAuto[k] and t-self.recentAuto[k]<=120) and C_Timer and type(C_Timer.After)=="function" then
@@ -184,7 +194,7 @@ function R:Handle(msg)
             local t=self.ledger:Now()
             local repeated=self.lastResult and self.lastResult.message==cleaned and t and t-self.lastResult.at<=1
             if guid and rule[2]~="sent" and t then self.lastResult={message=cleaned,at=t} end
-            if not guid and not repeated then self:NoteManual(a,rule[2]) end
+            if not guid and not repeated then self:NoteManual(a,rule[2],cleaned) end
             if not guid and not repeated and rule[2]=="already_grouped" then self.missedGrouped=self.missedGrouped+1; self.ledger:InvalidateSent()
             elseif not guid and not repeated and rule[2]=="busy" then self.missedBusy=self.missedBusy+1; self.ledger:InvalidateSent() end
             if guid and rule[2]~="sent" and ns.Group and ns.Group.pending and not self.ledger:HasPending(guid) then ns.Group.pending[guid]=nil end
