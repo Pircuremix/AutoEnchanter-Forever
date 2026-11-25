@@ -2,7 +2,7 @@
 
 [![Latest release](https://img.shields.io/github/v/release/Pircuremix/AutoEnchanter-Forever)](https://github.com/Pircuremix/AutoEnchanter-Forever/releases/latest) [![Lua regression tests](https://github.com/Pircuremix/AutoEnchanter-Forever/actions/workflows/tests.yml/badge.svg)](https://github.com/Pircuremix/AutoEnchanter-Forever/actions/workflows/tests.yml) [![Publish Forever release](https://github.com/Pircuremix/AutoEnchanter-Forever/actions/workflows/release.yml/badge.svg)](https://github.com/Pircuremix/AutoEnchanter-Forever/actions/workflows/release.yml)
 
-AutoEnchanter is an independent enchanting customer-management addon for **World of Warcraft: Forever** (target interface 16001). Original author: Sleepy. Current source version: **1.6.0**.
+AutoEnchanter is an independent enchanting customer-management addon for **World of Warcraft: Forever** (target interface 16001). Original author: Sleepy. Current source version: **1.6.1**.
 
 [Download latest release](https://github.com/Pircuremix/AutoEnchanter-Forever/releases/latest) · [WowUp guide](docs/WOWUP.md) · [Changelog](CHANGELOG.md) · [Version notes](docs/releases/README.md) · [Architecture](docs/ARCHITECTURE.md) · [API audit](API-AUDIT.md) · [Report an issue](https://github.com/Pircuremix/AutoEnchanter-Forever/issues)
 
@@ -64,7 +64,7 @@ Open **Escape > Options > AddOns > Auto Enchanter**, or type `/ae settings` (als
 | Auto raid conversion | Off | Ordinary party, leader only; never converts a raid back to party |
 | Conversion threshold | 3 | Select 2–5 total players, including yourself |
 
-Message placeholders: `{customer}` (original chat name), `{player}` (character's first/name API value), `{zone}` (current zone). Unknown placeholders remain literal. Expanded text over 255 bytes is skipped, not truncated. Empty/whitespace-only text disables sending but not marking. Channel selection is automatic; no public-chat or whisper fallback.
+Message placeholders (case-insensitive): `{CUSTOMER}` (original full chat name), `{PLAYER}` (your character name), `{ZONE}` (current zone), `{MARKER}` (actual current raid target icon), `{MARKER_NAME}` (English marker name). Unknown placeholders remain literal, including native `{rt1}`–`{rt8}`. Expanded text over 255 bytes is skipped, not truncated. The settings editor has insertion buttons and a local preview; `/ae preview [customer name]` previews the saved message without sending. Marker values are read after marking, immediately before sending; absent/unreadable markers use `(no marker)` or `(marker unavailable)`. See [welcome templates](docs/WELCOME-MESSAGES.md). Empty/whitespace-only text disables sending but not marking. Channel selection is automatic; no public-chat or whisper fallback.
 
 Example: `Welcome {customer}! Please come to me in {zone} and open trade when ready.`
 
@@ -128,6 +128,7 @@ Both `/ae` and `/autoenchanter` are supported.
 | `/ae settings`, `/ae config` | Open Business Manager Settings tab |
 | `/ae welcome on/off` | Enable or disable welcome chat |
 | `/ae message <text>` | Save welcome text (empty clears it) |
+| `/ae preview [customer name]` | Preview saved welcome locally; default Example Customer |
 | `/ae marker on/off/1-8` | Toggle or enable/select self-marker |
 | `/ae raid on/off/2-5` | Toggle or enable/set conversion threshold |
 | `/ae database`, `/ae dashboard` | Open customer database |

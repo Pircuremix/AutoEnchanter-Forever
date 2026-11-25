@@ -17,3 +17,7 @@ Live verification: stock and EllesmereUI loaded, normal grouping/flyout discover
 ## 1.6.0
 
 Business Manager adds Blacklist (filter/search/sort, paging, recent history, two-click removal) and Guild settings (accessible from Settings, independent enable checkbox, edit/save, empty disables, restore default, request roster). Existing normal welcome controls are unchanged. Customer table adds Grouped and Busy, and selected customer shows no-trade, offenses, free guild items and current guild status. Layout remains fixed logical canvas with scale controls. No changes to minimap click gestures or EllesmereUI ownership. Live rendering still needs verification.
+
+## 1.6.1
+
+Shared group settings canvas adds five placeholder buttons, an editable-message local preview and marker-change refresh while visible. Both the Business Manager and native addon settings use this canvas. Save/Enter persists the raw template, Escape restores it. Preview uses current marker, not configured marker; icon rendering falls back to native token text if the renderer is unavailable. See WELCOME-MESSAGES.md. No changes to minimap or EllesmereUI.

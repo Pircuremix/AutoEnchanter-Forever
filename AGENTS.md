@@ -19,6 +19,10 @@ Read docs/DATABASE.md, docs/TRADE-TRACKING.md and docs/UI-COMPATIBILITY.md befor
 
 Read docs/CUSTOMER-POLICY.md, INVITE-OUTCOMES.md and PERFORMANCE.md. Never classify already grouped/busy or unconfirmed timeout as a decline. Confirm sent evidence before expiry penalty; no retroactive legacy bans. Preserve independent absolute restriction deadlines and offense history. Guild roster complete replacement, tri-state identity, guild exemption only for non-tipping. Empty/whitespace guild whisper never sends; native invite first and normal welcome remains separate. Never issue penalties on ambiguous trade evidence, incomplete restored visits or historical unpaid visits. Lifetime positive tips exempt from non-tipping policy. No scans/UI/guild requests before native invite. Run policy suite/benchmarks, preserve real-player privacy and document limitations.
 
+## Welcome template invariants (1.6.1)
+
+Read docs/WELCOME-MESSAGES.md. Expand only after observed acceptance and optional marking. Actual readable self-marker, never configured preference; preserve existing marks and native chat restrictions. Case-insensitive single-pass substitution, unknown tokens preserved, expanded 255-byte cap. Local previews never send chat or change group state. No work added to pre-invite path.
+
 ## Implementation workflow
 
 1. Check the exact current branch, API source for the Forever client, and existing tests. Update docs/ARCHITECTURE.md if contracts or modules change.

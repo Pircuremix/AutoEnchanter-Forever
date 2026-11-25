@@ -1,4 +1,4 @@
--- AutoEnchanter Forever 1.6.0 (release candidate)
+-- AutoEnchanter Forever 1.6.1 (release candidate)
 -- Normalized matching: ignores filler words, punctuation, spaces, and "Xg" / "X gold" patterns
 local ADDON = "Auto Enchanter"
 local addonName, ns = ...
@@ -604,7 +604,7 @@ SlashCmdList["AUTOENCHANTER"] = function(msg)
     end
     if cmd == "diagnostics" or cmd == "diag" then
         local version, build, _, interface = GetBuildInfo()
-        printSys(("Version 1.6.0; client=%s build=%s interface=%s"):format(tostring(version), tostring(build), tostring(interface)))
+        printSys(("Version 1.6.1; client=%s build=%s interface=%s"):format(tostring(version), tostring(build), tostring(interface)))
         local party = C_PartyInfo or {}
         printSys(("InviteUnit=%s CanInvite=%s IsPartyFull=%s IsGUIDInGroup=%s"):format(type(party.InviteUnit), type(party.CanInvite), type(party.IsPartyFull), type(party.IsGUIDInGroup)))
         printSys(("Menu.ModifyMenu=%s issecretvalue=%s; automatic invites blocked=%s"):format(type(Menu and Menu.ModifyMenu), type(issecretvalue), tostring(inviteBlocked == true)))
@@ -724,7 +724,7 @@ SlashCmdList["AUTOENCHANTER"] = function(msg)
         return
     end
 
-    printSys("Usage: /ae on | off | add <phrase> | remove <index|phrase> | list | debug [on|off] | popup [on|off] | test <phrase> | status | diagnostics | settings | groupstatus | welcome | message | marker | raid | database | ledgerstatus | tradetrace | minimap | blacklist | performance | guildmessage | guildwhisper | guildrefresh")
+    printSys("Usage: /ae on | off | add <phrase> | remove <index|phrase> | list | debug [on|off] | popup [on|off] | test <phrase> | status | diagnostics | settings | groupstatus | welcome | message | preview | marker | raid | database | ledgerstatus | tradetrace | minimap | blacklist | performance | guildmessage | guildwhisper | guildrefresh")
 end
 
 -- SavedVariables: preserve valid phrases and existing boolean settings.
@@ -782,7 +782,7 @@ frame:SetScript("OnEvent", function(self, event, ...)
     elseif event == "PLAYER_LOGIN" then
         if not db then InitDB() end
         RefreshIdentity()
-        printSys("Loaded 1.6.0. ENABLED=" .. (db.enabled and "ON" or "OFF") .. "; DEBUG=" .. (db.debug and "ON" or "OFF") .. "; popup=" .. (db.popupEnabled and "ON" or "OFF"))
+        printSys("Loaded 1.6.1. ENABLED=" .. (db.enabled and "ON" or "OFF") .. "; DEBUG=" .. (db.debug and "ON" or "OFF") .. "; popup=" .. (db.popupEnabled and "ON" or "OFF"))
         InitModernMenus()
         options:Init(group, printSys)
         minimap:Init(db,dashboard,printSys)

@@ -10,6 +10,14 @@ Post-release test evidence is maintained under [docs/verification/](docs/verific
 - Recorded v1.6.0 publication evidence, benchmark results, the resolved intermediate TOC failure, and outstanding live acceptance checks.
 - Updated contributor workflow to keep new modules and TOC entries together. No runtime or package changes.
 
+## 1.6.1 — Dynamic welcome messages
+
+- Added case-insensitive welcome placeholders CUSTOMER, PLAYER, ZONE, MARKER and MARKER_NAME.
+- Marker uses actual readable player marker at send time, not configured preference. Numeric native icon tokens; explicit no-marker/unavailable fallback.
+- Added clickable placeholder insertion, live local settings preview and /ae preview [customer name].
+- Kept existing templates, welcome routing, group actions, invitation hot path, guild whispers and schema 2 unchanged.
+- Added regression coverage and [version notes](docs/releases/v1.6.1.md).
+
 ## 1.6.0 — Smart Customer Protection
 
 ### Added

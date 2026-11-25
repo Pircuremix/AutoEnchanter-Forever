@@ -40,13 +40,15 @@ local function frame()
     function f:RegisterEvent(e) self.events[e]=true end
     function f:UnregisterEvent(e) self.events[e]=nil end
     function f:SetScript(e,cb) self.scripts[e]=cb end
-    function f:SetText(s) self.text=s end
+    function f:SetText(s) self.text=s; if self.scripts.OnTextChanged then self.scripts.OnTextChanged(self) end end
+    function f:Insert(s) self:SetText(self.text..s) end
+    function f:IsVisible() return true end
     function f:GetText() return self.text end
     function f:SetChecked(v) self.checked=v end
     function f:GetChecked() return self.checked end
     function f:CreateFontString() return frame() end
     function f:CreateTexture() return frame() end
-    for _,method in ipairs({"SetPoint","SetSize","SetAutoFocus","SetMaxLetters","ClearFocus","SetTexture","SetTexCoord"}) do f[method]=function() end end
+    for _,method in ipairs({"SetPoint","SetSize","SetWidth","SetHeight","SetJustifyH","SetJustifyV","SetFocus","SetAutoFocus","SetMaxLetters","ClearFocus","SetTexture","SetTexCoord"}) do f[method]=function() end end
     return f
 end
 function CreateFrame(kind, name, parent, template)
@@ -160,4 +162,57 @@ setup(); behavior.marker="blocked"; invite("a"); join("a"); invite("b"); join("b
 setup(); invite("a"); raid=true; leader=false; join("a"); check("raid nonleader can welcome but not mark",#messages==1 and messages[1].channel=="RAID" and #marks==0)
 setup(); cmd("message "); invite("a"); join("a"); check("empty message still marks",#messages==0 and #marks==1)
 setup(); invite("a"); local saved=AutoEnchanterDB; reset(saved); join("a"); check("settings persist but pending lost on reload",AutoEnchanterDB.raidMarker==4 and AutoEnchanterDB.welcomeEnabled and #messages==0)
+-- Dynamic welcome message regressions.
+setup(); cmd("message Hey {CUSTOMER}, find {MARKER} ({MARKER_NAME}) in {ZoNe}, from {PLAYER}.")
+invite("a","Alice Stone"); join("a")
+check("dynamic template sees newly applied marker",messages[1].msg=="Hey Alice Stone, find {rt4} (Triangle) in Stormwind, from Sleepy.")
+markers.self=8; invite("b","Bob Oak"); join("b")
+check("dynamic marker reads existing skull, not configured triangle",messages[2].msg=="Hey Bob Oak, find {rt8} (Skull) in Stormwind, from Sleepy." and #marks==1)
+setup(); cmd("marker off"); cmd("message {marker} {MARKER_NAME}"); markers.self=5; invite("a"); join("a")
+check("manual marker when automarking disabled",messages[1].msg=="{rt5} Moon" and #marks==0)
+setup(); cmd("marker off"); cmd("message {MARKER} {MARKER_NAME}"); invite("a"); join("a")
+check("unmarked fallback",messages[1].msg=="(no marker) (no marker)")
+setup(); cmd("message {MARKER}"); markers.self=secret; invite("a"); join("a")
+check("unreadable marker fallback",messages[1].msg=="(marker unavailable)" and #marks==0)
+setup(); behavior.marker="error"; cmd("message {MARKER}"); invite("a"); join("a")
+check("failed marker never advertised",messages[1].msg=="(no marker)")
+setup(); behavior.marker="blocked"; cmd("message {MARKER}"); invite("a"); join("a")
+check("blocked marker never advertised",messages[1].msg=="(no marker)")
+setup(); markers.self=9
+check("invalid marker index fallback",ns.Group:ExpandWelcome("{MARKER}","A")=="(marker unavailable)")
+for i,name in ipairs({"Star","Circle","Diamond","Triangle","Moon","Square","Cross","Skull"}) do
+    markers.self=i
+    check("native numeric marker "..i,ns.Group:ExpandWelcome("{MARKER}/{marker_name}","A")=="{rt"..i.."}/"..name)
+end
+check("unknown native and custom tokens preserved",ns.Group:ExpandWelcome("{rt8} {unknown} {MARKER_NAME}","A")=="{rt8} {unknown} Skull")
+check("single expansion does not reprocess customer text",ns.Group:ExpandWelcome("{CUSTOMER}","{MARKER}")=="{MARKER}")
+check("plain word CUSTOMER untouched",ns.Group:ExpandWelcome("CUSTOMER {customer}","Alice")=="CUSTOMER Alice")
+check("expanded bytes limit enforced",ns.Group:ExpandWelcome(string.rep("x",250).."{CUSTOMER}","Alice Stone")==nil)
+-- Template must fit too, but replacement can lengthen a valid saved template.
+local template=string.rep("{customer}",23)
+check("valid template expansion too long",#template<=255 and ns.Group:ExpandWelcome(template,string.rep("A",12))==nil)
+check("control chars in replacement rejected",ns.Group:ExpandWelcome("{CUSTOMER}","bad\nname")==nil)
+setup(); cmd("message Hi {CUSTOMER} {MARKER}"); markers.self=1
+C_ChatInfo.ReplaceIconAndGroupExpressions=function(msg,noIcons,noGroups)
+    assert(noIcons==false and noGroups==true); return msg:gsub("{rt1}","[star icon]")
+end
+cmd("preview Alice Stone")
+check("preview local native rendering",logs[#logs]:find("Hi Alice Stone [star icon]",1,true)~=nil and #messages==0 and #marks==0 and #invites==0)
+check("preview does not change saved message",AutoEnchanterDB.welcomeMessage=="Hi {CUSTOMER} {MARKER}")
+setup(); cmd("message Hi {CUSTOMER} {MARKER}"); cmd("preview")
+check("preview default sample and fallback",logs[#logs]:find("Hi Example Customer (no marker)",1,true)~=nil and #messages==0)
+setup(); local tokenButton,editor,saveButton
+for _,f in ipairs(frames) do
+    if f.kind=="EditBox" then editor=f end
+    if f.text=="MARKER_NAME" then tokenButton=f end
+    if f.text=="Save" then saveButton=f end
+end
+editor:SetText("Find "); tokenButton.scripts.OnClick(tokenButton)
+check("placeholder button inserts at edit box",editor:GetText()=="Find {MARKER_NAME}")
+saveButton.scripts.OnClick(saveButton)
+check("placeholder template saves unchanged",AutoEnchanterDB.welcomeMessage=="Find {MARKER_NAME}")
+setup(); cmd("message {MARKER}"); cmd("raid 3"); invite("a"); join("a"); invite("b"); join("b"); markers.self=8; raid=true; fire("GROUP_ROSTER_UPDATE")
+check("delayed raid welcome reads latest actual marker",messages[2].channel=="RAID" and messages[2].msg=="{rt8}")
+setup(); cmd("message "..template); invite("a","LongCustomerName"); join("a")
+check("overlong expanded live welcome skipped",#messages==0 and ns.Group.stats.chatSkipped==1)
 print(("PASS group total=%d; runtime=%s"):format(passed,_VERSION))

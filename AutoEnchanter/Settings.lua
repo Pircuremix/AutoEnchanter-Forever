@@ -20,7 +20,7 @@ function UI:Build(parent,x,y)
     local group=self.group
     local panel=parent
     if x~=0 or y~=0 then
-        panel=CreateFrame("Frame",nil,parent); panel:SetSize(620,470); panel:SetPoint("TOPLEFT",parent,"TOPLEFT",x,y)
+        panel=CreateFrame("Frame",nil,parent); panel:SetSize(620,510); panel:SetPoint("TOPLEFT",parent,"TOPLEFT",x,y)
     end
         local refresh
         local function text(x,y,value,template)
@@ -35,30 +35,53 @@ function UI:Build(parent,x,y)
             return b
         end
         text(16,-16,"Auto Enchanter — Customer & Group Settings","GameFontNormalLarge")
-        text(16,-46,"Settings are account-wide. New features start off. /ae debug on suppresses live actions.","GameFontHighlightSmall")
+        text(16,-46,"Settings are account-wide. /ae debug on suppresses live actions.","GameFontHighlightSmall")
         local welcome=checkbox(16,-72,"Send welcome after an addon-invited customer joins","welcomeEnabled")
         text(16,-111,"Welcome message (one line, max 255 bytes)","GameFontNormal")
         local edit=CreateFrame("EditBox",nil,panel,"InputBoxTemplate")
         edit:SetSize(440,26); edit:SetPoint("TOPLEFT",panel,"TOPLEFT",20,-136)
         edit:SetAutoFocus(false); edit:SetMaxLetters(255)
-        local note=text(16,-170,"{customer}  {player}  {zone}  |  Channel: automatic PARTY / RAID","GameFontHighlightSmall")
+        local note=text(16,-200,"Preview (Example Customer) | Channel: automatic PARTY / RAID","GameFontHighlightSmall")
+        local preview=text(16,-218,"","GameFontHighlightSmall")
+        preview:SetWidth(540); preview:SetHeight(36); preview:SetJustifyH("LEFT"); preview:SetJustifyV("TOP")
+        local function updatePreview()
+            local msg,reason=group:PreviewWelcome(edit:GetText(),"Example Customer")
+            preview:SetText(msg or reason)
+        end
+        edit:SetScript("OnTextChanged",updatePreview)
+        for i,token in ipairs({"CUSTOMER","MARKER","MARKER_NAME","PLAYER","ZONE"}) do
+            local value="{"..token.."}"
+            local b=CreateFrame("Button",nil,panel,"UIPanelButtonTemplate")
+            b:SetSize(105,24); b:SetPoint("TOPLEFT",panel,"TOPLEFT",16+(i-1)*109,-170)
+            b:SetText(token)
+            b:SetScript("OnClick",function()
+                edit:SetFocus(); edit:Insert(value); updatePreview()
+            end)
+        end
+        -- Update visible previews when actual raid markers change; no polling.
+        if type(panel.RegisterEvent)=="function" then
+            pcall(panel.RegisterEvent,panel,"RAID_TARGET_UPDATE")
+            panel:SetScript("OnEvent",function(self,event)
+                if event=="RAID_TARGET_UPDATE" and self:IsVisible() then updatePreview() end
+            end)
+        end
         local save=CreateFrame("Button",nil,panel,"UIPanelButtonTemplate")
         save:SetSize(90,26); save:SetPoint("LEFT",edit,"RIGHT",8,0); save:SetText("Save")
         local function saveMessage()
             local success,reason=group:Set("welcomeMessage",edit:GetText())
-            note:SetText(success and "Message saved. Channel: automatic PARTY / RAID." or reason)
-            edit:ClearFocus()
+            note:SetText(success and "Message saved. Preview (Example Customer):" or reason)
+            updatePreview(); edit:ClearFocus()
         end
         save:SetScript("OnClick",saveMessage)
         edit:SetScript("OnEnterPressed",saveMessage)
-        edit:SetScript("OnEscapePressed",function(self) self:SetText(group.db.welcomeMessage); self:ClearFocus() end)
-        local marker=checkbox(16,-205,"Mark my character after a customer joins","autoMarkerEnabled")
-        text(16,-245,"Choose a marker (existing markers are always preserved).","GameFontHighlightSmall")
+        edit:SetScript("OnEscapePressed",function(self) self:SetText(group.db.welcomeMessage); updatePreview(); self:ClearFocus() end)
+        local marker=checkbox(16,-258,"Mark my character after a customer joins","autoMarkerEnabled")
+        text(16,-292,"Choose a marker (existing markers are always preserved).","GameFontHighlightSmall")
         local markerButtons={}
         for i=1,8 do
             local index=i
             local b=CreateFrame("Button",nil,panel,"UIPanelButtonTemplate")
-            b:SetSize(114,28); b:SetPoint("TOPLEFT",panel,"TOPLEFT",16+((i-1)%4)*122,-268-math.floor((i-1)/4)*33)
+            b:SetSize(114,28); b:SetPoint("TOPLEFT",panel,"TOPLEFT",16+((i-1)%4)*122,-312-math.floor((i-1)/4)*33)
             local icon=b:CreateTexture(nil,"ARTWORK")
             icon:SetSize(18,18); icon:SetPoint("LEFT",b,"LEFT",6,0)
             icon:SetTexture("Interface\\TargetingFrame\\UI-RaidTargetingIcons")
@@ -68,25 +91,25 @@ function UI:Build(parent,x,y)
             b:SetText("    "..labels[i]); markerButtons[i]=b
             b:SetScript("OnClick",function() group:Set("raidMarker",index); refresh() end)
         end
-        local raid=checkbox(16,-343,"Automatically convert ordinary parties to raids","autoRaidEnabled")
-        text(16,-382,"Convert at this many total players (including yourself).","GameFontHighlightSmall")
+        local raid=checkbox(16,-383,"Automatically convert ordinary parties to raids","autoRaidEnabled")
+        text(16,-415,"Convert at this many total players (including yourself).","GameFontHighlightSmall")
         local thresholdButtons={}
         for i=2,5 do
             local count=i
             local b=CreateFrame("Button",nil,panel,"UIPanelButtonTemplate")
-            b:SetSize(72,28); b:SetPoint("TOPLEFT",panel,"TOPLEFT",16+(i-2)*82,-406)
+            b:SetSize(72,28); b:SetPoint("TOPLEFT",panel,"TOPLEFT",16+(i-2)*82,-438)
             b:SetText(tostring(i)); thresholdButtons[i]=b
             b:SetScript("OnClick",function() group:Set("raidThreshold",count); refresh() end)
         end
-        text(16,-448,"Leader only; no instance groups. Conversion may interrupt normal quest progress.","GameFontHighlightSmall")
+        text(16,-478,"Leader only; no instance groups. Conversion may interrupt normal quest progress.","GameFontHighlightSmall")
         refresh=function()
             local d=group.db
             welcome:SetChecked(d.welcomeEnabled); marker:SetChecked(d.autoMarkerEnabled); raid:SetChecked(d.autoRaidEnabled)
             for i,b in ipairs(markerButtons) do b:SetText((i==d.raidMarker and "*   " or "    ")..labels[i]) end
             for i,b in pairs(thresholdButtons) do b:SetText((i==d.raidThreshold and "* " or "")..i) end
         end
-        panel:SetScript("OnShow",function() refresh(); edit:SetText(group.db.welcomeMessage); note:SetText("{customer}  {player}  {zone}  |  Channel: automatic PARTY / RAID") end)
-        refresh(); edit:SetText(group.db.welcomeMessage)
+        panel:SetScript("OnShow",function() refresh(); edit:SetText(group.db.welcomeMessage); note:SetText("Preview (Example Customer) | Channel: automatic PARTY / RAID"); updatePreview() end)
+        refresh(); edit:SetText(group.db.welcomeMessage); updatePreview()
 end
 function UI:Open()
     if self.category and Settings and type(Settings.OpenToCategory)=="function" then

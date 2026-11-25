@@ -1,6 +1,6 @@
 # Architecture and maintenance contracts
 
-Source version: 1.6.0. Forever interface 16001. This document describes actual implementation, not a design proposal.
+Source version: 1.6.1. Forever interface 16001. This document describes actual implementation, not a design proposal.
 
 ## Runtime layout and load order
 
@@ -62,7 +62,7 @@ One account-wide AutoEnchanterDB table. No destructive schema replacement.
 | guildWhisperEnabled | boolean true | 1.6.0 |
 | guildWhisperMessage | single-line string, max 255 bytes; default guild message; empty disables | 1.6.0 |
 
-Validate types/ranges at initialization and via Group:Set. Invalid values get defaults; valid existing values persist. Group module's pending welcome/marker GUIDs, timer handles and session block flags are not saved. Durable invitation records, customer totals and policy deadlines are saved separately in customerLedger. UI controls and slash commands share validation. Changes to message/marker use current config at action time. Message templates expand only customer/player/zone, validate expanded length and controls, never execute text.
+Validate types/ranges at initialization and via Group:Set. Invalid values get defaults; valid existing values persist. Group module's pending welcome/marker GUIDs, timer handles and session block flags are not saved. Durable invitation records, customer totals and policy deadlines are saved separately in customerLedger. UI controls and slash commands share validation. Changes to message/marker use current config at action time. Welcome templates expand customer/player/zone/marker/marker_name case-insensitively in one pass, validate expanded length and controls, never execute text. Marker read occurs at expansion time, after optional marking. Preview shares expansion but uses local icon rendering only. See [WELCOME-MESSAGES.md](WELCOME-MESSAGES.md).
 
 ## API safety invariants
 

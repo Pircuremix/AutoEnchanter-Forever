@@ -4,6 +4,7 @@ local _, ns = ...
 local Group = {}
 ns.Group = Group
 local TTL, LIMIT, CONVERT_WAIT = 120, 128, 5
+local MARKER_NAMES = {"Star","Circle","Diamond","Triangle","Moon","Square","Cross","Skull"}
 local DEFAULT_MESSAGE = "Thanks for choosing me for your enchant!"
 local function readable(v)
     return not (issecretvalue and issecretvalue(v))
@@ -130,18 +131,56 @@ local function inInstance()
     local value, ok = safe(IsInInstance)
     return not ok or value ~= false
 end
+-- Pure template substitution with read-only native context. No recursive expansion.
+-- Numeric raid icon tokens are locale-independent; never infer from configured marker.
+function Group:ExpandWelcome(template, customer)
+    if not validMessage(template) then return nil, "Message must be one line, at most 255 bytes." end
+    local first, ok = safe(UnitName, "player")
+    local zone = safe(GetZoneText)
+    local values = {
+        customer=readable(customer) and type(customer)=="string" and customer~="" and customer or "Example Customer",
+        player=ok and type(first)=="string" and first or "me",
+        zone=type(zone)=="string" and zone or "my location"
+    }
+    local markerRead=false
+    local msg=template:gsub("{([%a_]+)}",function(k)
+        local key=k:lower()
+        if (key=="marker" or key=="marker_name") and not markerRead then
+            markerRead=true
+            local mark, known=safe(GetRaidTargetIndex,"player")
+            if known and integer(mark,1,8) then
+                values.marker="{rt"..mark.."}"
+                values.marker_name=MARKER_NAMES[mark]
+            elseif known and (mark==nil or mark==0) then
+                values.marker,values.marker_name="(no marker)","(no marker)"
+            else
+                values.marker,values.marker_name="(marker unavailable)","(marker unavailable)"
+            end
+        end
+        return values[key] or "{"..k.."}"
+    end)
+    if not validMessage(msg) then
+        return nil, "Expanded message exceeds 255 bytes or contains control characters."
+    end
+    return msg
+end
+-- Local-only preview; WoW converts native icon tokens to display textures.
+-- Fallback shows the token verbatim if the renderer is unavailable/restricted.
+function Group:PreviewWelcome(template,customer)
+    local msg,err=self:ExpandWelcome(template,customer)
+    if not msg then return nil,err end
+    if msg:match("^%s*$") then return "(empty welcome; nothing will be sent)" end
+    local rendered,ok=safe(C_ChatInfo and C_ChatInfo.ReplaceIconAndGroupExpressions,msg,false,true)
+    return ok and type(rendered)=="string" and rendered or msg
+end
 function Group:SendWelcome(entry, state)
     local db, stats = self.db, self.stats
     if not db.welcomeEnabled or db.welcomeMessage:match("^%s*$") then return end
     if self.chatBlocked or locked() then stats.chatSkipped=stats.chatSkipped+1; return end
-    local first, ok = safe(UnitName, "player")
-    local zone = safe(GetZoneText)
-    local values = {customer=entry.name, player=ok and type(first)=="string" and first or "me",
-        zone=type(zone)=="string" and zone or "my location"}
-    local msg = db.welcomeMessage:gsub("{(%a+)}", function(k) return values[k] or "{"..k.."}" end)
-    if not validMessage(msg) then
+    local msg,err=self:ExpandWelcome(db.welcomeMessage,entry.name)
+    if not msg then
         stats.chatSkipped=stats.chatSkipped+1
-        self.log("Welcome skipped: expanded message exceeds 255 bytes or contains control characters.")
+        self.log("Welcome skipped: "..err)
         return
     end
     local result, success = safe(C_ChatInfo and C_ChatInfo.SendChatMessage, msg, state.raid and "RAID" or "PARTY")
@@ -279,6 +318,11 @@ function Group:Status()
 end
 function Group:Command(cmd, rest)
     if cmd=="groupstatus" then self:Status(); return true end
+    if cmd=="preview" then
+        local msg,err=self:PreviewWelcome(self.db.welcomeMessage,rest~="" and rest or "Example Customer")
+        self.log(msg and ("Welcome preview (local): "..msg) or err)
+        return true
+    end
     local key,value
     if cmd=="welcome" then key="welcomeEnabled"
     elseif cmd=="message" then key="welcomeMessage"; value=rest
