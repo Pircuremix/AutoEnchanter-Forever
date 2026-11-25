@@ -1,6 +1,6 @@
 # Architecture and maintenance contracts
 
-Source version: 1.5.0. Forever interface 16001. This document describes actual implementation, not a design proposal.
+Source version: 1.6.0. Forever interface 16001. This document describes actual implementation, not a design proposal.
 
 ## Runtime layout and load order
 
@@ -8,6 +8,10 @@ The TOC is authoritative. WoW calls each Lua chunk with addon name and the same 
 
 | File | Responsibility |
 |---|---|
+| AutoEnchanter/CustomerPolicy.lua | Persistent restrictions, cached lifetime totals, settlement and offense history |
+| AutoEnchanter/Guild.lua | Guild roster cache and independent invite-time whisper |
+| AutoEnchanter/InviteResults.lua | Localized named outcome classification and synchronous result staging |
+| AutoEnchanter/Performance.lua | Bounded local latency samples |
 | AutoEnchanter/Database.lua | Persistent invitation ledger and active visit correlation, exposes ns.Database |
 | AutoEnchanter/Trade.lua | Read-only transaction snapshot and completion evidence, exposes ns.Trade |
 | AutoEnchanter/Dashboard.lua | Lazy paginated dashboard, sorting, export and confirmed deletion, exposes ns.Dashboard |
@@ -80,3 +84,11 @@ Trade observes TRADE_SHOW, offer changes, both-accepted snapshots, explicit loca
 Dashboard builds only when opened, reuses settings controls, pages eight customers/six invitations, sorts computed rows and coalesces visible refresh on mutations. No database scan on unrelated public chat. Named 30px minimap button is a direct child of Minimap; third-party layouts can reparent it. All enable/disable operations route through the existing slash handler. See [UI-COMPATIBILITY.md](UI-COMPATIBILITY.md).
 
 The new SavedVariables fields are customerLedger (schema 1), minimapHidden (false), dashboardPosition (x/y/scale). Unknown future ledger schemas are preserved and not modified. Tests/business.lua covers database, trade, dashboard model and minimap dispatch; runtime tests also validate original core/group behavior. Real trade event ordering and visual layout require live testing.
+
+## 1.6.0 policy, guild and fast-path contracts
+
+Schema 2 supersedes schema 1 expiration classification and adds customer policy state. Preserve all historical records and lifetime positive tips; old unconfirmed expired records are not verified declines. New invite attempts store policyEligible, guildAtInvite and optional guildWhisper call status. No retroactive bans based on old unpaid visits. Read [CUSTOMER-POLICY.md](CUSTOMER-POLICY.md), [INVITE-OUTCOMES.md](INVITE-OUTCOMES.md) and [PERFORMANCE.md](PERFORMANCE.md) before editing.
+
+Core pre-invite path: chat eligibility, normalized exact lookup, seven-second anti-spam, cached GUID guild membership, constant-time restriction and own pending checks, native eligibility and InviteUnit. No history scan, guild roster request, chat-cache pruning or dashboard rendering before invite. Synchronous native result events are buffered until ledger record exists; the guild whisper follows the native call and queued results. A native call is not delivery confirmation. Optional normal welcome remains independent and uses Group.lua after observed join. Trade ledger finalization and UI refresh are post-invite/event-driven.
+
+Policy:Init reconstructs accepted, verified decline, tip, unverified, grouped, busy and no-trade totals once at login. Outcomes and completed trades increment cached totals. Pending keys are indexed by enchanter GUID and customer GUID. Restrictions are absolute epoch deadlines; no timer per ban. A close callback settles for five seconds; restored/ambiguous visits are not penalized, including logout during settlement. Group departure is observed absence, not blame. Unverified trades prevent non-tipping enforcement. Guild roster membership is tri-state; no uncertain tip restriction enforced. Guild membership at invitation and service is used conservatively, and guild whispers may be blocked; empty text never calls chat API. No change to original configured welcome. Blacklist removal clears active deadlines and accumulated unpaid days, retains offense history.

@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.6.0 — Smart Customer Protection
+
+### Added
+- 30-minute decline/no-trade cooldowns; five verified declines with zero acceptances: 30 days, later declines 10 days until acceptance.
+- Non-tipping escalating 30/90/180-day restrictions with separate local unpaid dates, lifetime tip protection and preserved offense history.
+- Guild roster cache and editable private invite-time whisper; empty/whitespace-only suppresses; guild non-tipping exemption, normal welcome unchanged.
+- Already-grouped/busy outcomes, own pending suppression, Blacklist and Guild settings tabs, new statistics and latency diagnostics.
+- Schema 2 migration, policy regression suite and benchmarks, dedicated policy/result/performance documentation.
+
+### Changed
+- Ambiguous expiration no longer counted as verified decline; old records preserved, no retroactive bans.
+- Cached policy checks and pending keys before invite; cache pruning moved after native call.
+- Trade completion stores exchange and guild evidence, five-second departure settlement. Live client acceptance pending.
+- [Detailed notes](docs/releases/v1.6.0.md).
+
 ## 1.5.0 — Customer database and business dashboard
 
 ### Added

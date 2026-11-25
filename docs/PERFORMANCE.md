@@ -1,0 +1,9 @@
+# Invitation performance — 1.6.0
+
+Objective: minimize local time from eligible chat reception to native invitation call without bypassing client restrictions. Server/network delay and other players' timing are outside addon control.
+
+Hot path: validate readable chat/channel and sender, normalize request, hash match, seven-second name cooldown, cached GUID guild membership, cached customer restriction, indexed own pending query, native party eligibility, InviteUnit. No historical scan, database-wide scan, UI refresh, guild roster request or chat-cache housekeeping before call. Native result messages may be staged during the call; ledger writes, guild whisper, cache housekeeping and optional later welcome occur after. Customer lifetime totals are rebuilt once at login and incremented on outcome/trade; pending lookup is keyed by owner and customer. Dashboard refresh coalesces ledger updates; visible table aggregation can scan history outside the invite path. Post-call ledger expiration processing scans pending attempts, not entire customer base.
+
+/ae performance measures local wall-clock-like debugprofilestop milliseconds from chat handler entry to just before InviteUnit. Running mean/max across session and p95/p99 over last 1024 calls. No timing sample if API unavailable. Measurements exclude native call duration, network, server acceptance and post-call work. /ae diagnostics includes these stats.
+
+Tests/policy.lua benchmarks actual mocked chat -> native invocation path with 1,000, 10,000 and 50,000 existing customer records and 300 distinct invites per case. Output lines BENCH report mean/p95/p99/max milliseconds and whole-event CPU duration. Mock timings use os.clock; no claim of real-client milliseconds or competitive win rate. See release CI logs for both Lua 5.1 and 5.4. Avoid strict wall-time CI assertions on shared runners; assert actual invocation counts and report metrics.

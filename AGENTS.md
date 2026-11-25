@@ -15,6 +15,10 @@ Read README.md, docs/ARCHITECTURE.md, API-AUDIT.md, docs/WOWUP.md, CHANGELOG.md 
 
 Read docs/DATABASE.md, docs/TRADE-TRACKING.md and docs/UI-COMPATIBILITY.md before touching ledger/UI modules. Never infer money from wallet delta, count accept/close alone as completed trade, or count spellcast alone as delivered enchant. Keep the final explicitly confirmed trade snapshot and single-use attribution to active GUID/owner visit. Never count failures as declined or one acceptance twice. Keep numeric copper and weighted averages, preserve schema and local timestamp history. No real player data in fixtures. Do not override EllesmereUI layout hooks. Test both Lua runtimes and distinguish model/dispatch mocks from real UI rendering. /ae tradetrace is bounded and local; no raw chat/name/money. Add a version note for every release.
 
+## Customer policy invariants (1.6.0)
+
+Read docs/CUSTOMER-POLICY.md, INVITE-OUTCOMES.md and PERFORMANCE.md. Never classify already grouped/busy or unconfirmed timeout as a decline. Confirm sent evidence before expiry penalty; no retroactive legacy bans. Preserve independent absolute restriction deadlines and offense history. Guild roster complete replacement, tri-state identity, guild exemption only for non-tipping. Empty/whitespace guild whisper never sends; native invite first and normal welcome remains separate. Never issue penalties on ambiguous trade evidence, incomplete restored visits or historical unpaid visits. Lifetime positive tips exempt from non-tipping policy. No scans/UI/guild requests before native invite. Run policy suite/benchmarks, preserve real-player privacy and document limitations.
+
 ## Implementation workflow
 
 1. Check the exact current branch, API source for the Forever client, and existing tests. Update docs/ARCHITECTURE.md if contracts or modules change.

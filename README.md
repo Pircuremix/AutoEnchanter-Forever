@@ -2,11 +2,15 @@
 
 [![Latest release](https://img.shields.io/github/v/release/Pircuremix/AutoEnchanter-Forever)](https://github.com/Pircuremix/AutoEnchanter-Forever/releases/latest) [![Lua regression tests](https://github.com/Pircuremix/AutoEnchanter-Forever/actions/workflows/tests.yml/badge.svg)](https://github.com/Pircuremix/AutoEnchanter-Forever/actions/workflows/tests.yml) [![Publish Forever release](https://github.com/Pircuremix/AutoEnchanter-Forever/actions/workflows/release.yml/badge.svg)](https://github.com/Pircuremix/AutoEnchanter-Forever/actions/workflows/release.yml)
 
-AutoEnchanter is an independent enchanting customer-management addon for **World of Warcraft: Forever** (target interface 16001). Original author: Sleepy. Current source version: **1.5.0**.
+AutoEnchanter is an independent enchanting customer-management addon for **World of Warcraft: Forever** (target interface 16001). Original author: Sleepy. Current source version: **1.6.0**.
 
 [Download latest release](https://github.com/Pircuremix/AutoEnchanter-Forever/releases/latest) · [WowUp guide](docs/WOWUP.md) · [Changelog](CHANGELOG.md) · [Version notes](docs/releases/README.md) · [Architecture](docs/ARCHITECTURE.md) · [API audit](API-AUDIT.md) · [Report an issue](https://github.com/Pircuremix/AutoEnchanter-Forever/issues)
 
 ## Features
+
+- Customer protection: 30-minute decline/no-trade cooldowns, 30-day then 10-day decline bans, and 30/90/180-day non-tipping bans.
+- Cached guild roster, editable invite-time guild whisper (empty disables sending), and guild tipping exemption.
+- Separate already-grouped/busy counters, searchable Blacklist and local invite-latency diagnostics.
 
 - Local customer database with individual invite history, accepted/declined/expired counts, verified gold tips and delivered enchant counts.
 - Searchable, sortable customer dashboard, weighted average per item, date filters, TSV export, and confirmed deletion/reset.
@@ -20,7 +24,7 @@ AutoEnchanter is an independent enchanting customer-management addon for **World
 - Native in-game settings panel, account-wide persistence, debug mode and diagnostics.
 - Custom enchanting icon, Professions category, tested versioned releases and WowUp distribution.
 
-The addon does not cast enchants, inspect your recipe book, advertise, send whispers, guarantee delivery of invitations or bypass Blizzard restrictions.
+The addon does not cast enchants, inspect your recipe book, advertise publicly, guarantee delivery of invitations or bypass Blizzard restrictions.
 
 ## Install or upgrade
 
@@ -31,6 +35,10 @@ Manual: download the named addon ZIP from [Releases](https://github.com/Pircurem
 ```text
 Interface/AddOns/AutoEnchanter/
   AutoEnchanter.toc
+  CustomerPolicy.lua
+  Guild.lua
+  InviteResults.lua
+  Performance.lua
   Database.lua
   Trade.lua
   Group.lua
@@ -83,13 +91,25 @@ Account-wide `AutoEnchanterDB` remains the only SavedVariables table. New fields
 
 Click the minimap icon or type `/ae database` to open the Business Manager. The customer table has clickable sort headings, case-insensitive search, customer filters, and date filters (lifetime, today, last 7/30 days). Select a row to see individual invitation history; use Prev/Next to page. Overview summarizes the selected filters. Settings reuses the native automation controls and adds whitelist, debug and minimap controls. The title bar can be dragged; +/- adjusts the window scale. Export TSV opens a local copyable text field; no network or clipboard write is performed. Delete selected and Reset database require a second click.
 
-The ledger automatically records actual AE invitation requests while AE is enabled and not in debug mode, independently of welcome/marker options. It continues observing the outcomes and trades of previously tracked visits even after AE is switched off; no new invite is created while off. The history stores a local date/time string at invitation, a numeric epoch, enchanter identity and customer GUID. Accepted requires observed membership; localized decline or 120-second expiry counts toward declines. Failed, unverified and overlapping superseded requests are visible separately, not counted as customer rejections. Pending invites persist if SavedVariables is successfully saved and are reconciled on reload. An offline acceptance not observable by the client cannot be reconstructed.
+The ledger automatically records actual AE invitation requests while AE is enabled and not in debug mode, independently of welcome/marker options. It continues observing the outcomes and trades of previously tracked visits even after AE is switched off; no new invite is created while off. The history stores a local date/time string at invitation, a numeric epoch, enchanter identity and customer GUID. Accepted requires observed membership; localized decline or a 120-second timeout with confirmed sent evidence counts toward declines. Unconfirmed timeouts and legacy ambiguous expirations do not. Already-grouped and busy outcomes remain separate. Failed, unverified and overlapping superseded requests are visible separately, not counted as customer rejections. Pending invites persist if SavedVariables is successfully saved and are reconciled on reload. An offline acceptance not observable by the client cannot be reconstructed.
 
 Only a confirmed completed trade with a tracked, active accepted customer can contribute tips and items. Positive incoming money, no outgoing money, no transferred items in either direction, no incoming enchant/currency: count the gold. Your outgoing enchant on the customer's non-traded slot 7 is a service, not an outgoing item. Each explicitly completed final enchant in that slot contributes one item, including unpaid enchants. Separate qualifying payments in the same visit are added. A canceled trade or an ambiguous final snapshot never increases totals. Trade closure or both players clicking Accept alone is insufficient; if the live client doesn't provide explicit completion evidence, an unverified entry is recorded and excluded from statistics. Average is total integer copper divided by completed items, not by visits; display — if no items.
 
 Use `/ae tradetrace on` and `/ae tradetrace dump` to investigate event order locally. No player names, chat text or monetary details are included in the trace. The customer database is stored only in account SavedVariables, not uploaded to GitHub. There is no historical backfill. See [database schema](docs/DATABASE.md), [trade evidence](docs/TRADE-TRACKING.md), and [UI compatibility](docs/UI-COMPATIBILITY.md).
 
 **EllesmereUI:** the 30px named Minimap child can be discovered by its normal addon-button scan/flyout. If Free Move Buttons is enabled, its Shift-left gesture takes precedence. Disable that setting to use Shift-left toggle, or use the right-click menu / slash commands. Actual visual compatibility still requires live testing.
+
+## Smart customer protection (1.6.0)
+
+Automatic protection is active for real AE invitations. Explicit declines and confirmed sent invitations that expire impose a 30-minute cooldown. For customers with zero lifetime acceptances, the first threshold of five verified declines imposes 30 days; later verified declines impose 10 days each until an acceptance. No permanent decline ban. A customer leaving or being removed without a confirmed exchange gets 30 minutes, after a five-second settlement grace. Materials, gold and delivered enchant services count as exchange. Ambiguous evidence cannot impose this penalty.
+
+Customers with zero lifetime verified tips who receive completed unpaid enchants on two distinct local dates are restricted for 30 days. After expiration or manual removal, a new qualifying unpaid visit triggers 90 days, then 180 days, repeating 180. Offense history persists; qualifying services cannot be reused. Only new policy-eligible visits count. Positive lifetime tips exempt the customer from this policy; unresolved trade evidence prevents non-tipping enforcement. Guild services are exempt.
+
+**Guild settings:** open /ae settings and select Guild settings (or the Guild settings tab). The default private whisper is exactly: "yo, I'm your guildie I can enchant you for free. Don't tip me". Edit and Save/Enter; blank or whitespace-only text means no whisper, independently of the enable checkbox. The whisper is attempted after the native invite, not on acceptance. Your regular configured party/raid welcome remains separate. The guild cache is refreshed at login and on roster/membership changes, replaced rather than appended; unknown guild membership does not justify a tip penalty. A current guild member is exempt from non-tipping bans, including an active prior ban, but not from decline/no-trade restrictions. Leaving the guild restores non-tipping eligibility; past exempt services never become offenses. Automatic whisper delivery can be blocked by Blizzard; no retry or protection bypass.
+
+Open /ae blacklist for searchable/sortable restrictions, expiration, offense count, recent history and confirmed manual removal. Independent restrictions use the longest applicable deadline. Expiration is automatic on lookup. The Customers tab separates grouped/busy/pending/declined, and the selected customer shows no-trade departures, free guild items and tip offenses. A grouped/busy outcome may represent a missed opportunity, not proof another enchanter won.
+
+See [customer policy](docs/CUSTOMER-POLICY.md), [invite outcomes](docs/INVITE-OUTCOMES.md) and [performance](docs/PERFORMANCE.md) for details.
 
 ## Commands
 
@@ -111,7 +131,12 @@ Both `/ae` and `/autoenchanter` are supported.
 | `/ae marker on/off/1-8` | Toggle or enable/select self-marker |
 | `/ae raid on/off/2-5` | Toggle or enable/set conversion threshold |
 | `/ae database`, `/ae dashboard` | Open customer database |
-| `/ae ledgerstatus` | Ledger and trade-evidence counters |
+| `/ae ledgerstatus` | Ledger, trade, restrictions and guild diagnostics |
+| `/ae blacklist` | Open blacklist and history |
+| `/ae guildmessage <text>` | Save guild whisper (empty disables sending) |
+| `/ae guildwhisper on/off` | Toggle invite-time guild whisper |
+| `/ae guildrefresh` | Request fresh guild roster |
+| `/ae performance` | Local invite processing latency |
 | `/ae tradetrace on/off/dump/clear` | Bounded local event-order diagnostics |
 | `/ae minimap show/hide` | Show or hide minimap icon |
 | `/ae groupstatus` | Group settings, pending records and action counters |
@@ -158,7 +183,9 @@ Run `bash scripts/test.sh 5.1` and `bash scripts/test.sh 5.4` from the repositor
 
 7. Test v1.5.0 with a consenting customer: invite/decline/expire, successful gold-only payment, canceled trade, gold plus materials, outgoing item or money, and two completed non-traded enchants followed by separate payment. Verify exact database totals and trace the event sequence if any completed trade is unverified. Test reload, customer sorting, export, and all three minimap gestures in default UI and EllesmereUI (Free Move Buttons off).
 
-**Live client acceptance of 1.4.0 group automation and 1.5.0 trade/UI behavior is not yet independently verified.** The API and mock checks are necessary but not sufficient.
+8. Test 1.6.0 with consenting players: already grouped, busy, explicit decline, confirmed sent timeout, uncertain timeout, no-trade departure, and a guild member whose whisper is blank. Verify native invitation happens first, original welcome remains unchanged, guild roster removes former members, and a legitimate materials exchange avoids cooldown. Verify completed gold tips before relying on non-tipping bans. Use /ae blacklist and /ae performance.
+
+**Live client acceptance of group automation, trade tracking, invite-result classification, guild whispers and dashboard rendering remains unverified.** The API and mock checks are necessary but not sufficient.
 
 ## Project documentation
 
