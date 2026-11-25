@@ -37,7 +37,7 @@ local function pattern(template)
 end
 function R:Init(ledger)
     self.ledger=ledger; self.rules={}; self.queue=nil; self.unknown=0; self.missedGrouped=0; self.missedBusy=0; self.lastResult=nil
-    self.manualNotes={}; self.recentAuto={}; self.identities={}; self.identityRing={}; self.identityNext=0
+    self.manualNotes={}; self.recentAuto={}; self.ignoredManual={}; self.manualGeneration=0; self.identities={}; self.identityRing={}; self.identityNext=0
     self.manualHookCount=0; self.manualObserved=0; self.manualFallback=0; self.manualErrors=0
     for _,rule in ipairs(RULES) do
         local v=_G[rule[1]]
@@ -109,6 +109,10 @@ function R:End(visit,guid)
     self.synchronousVisit,self.synchronousGUID=nil,nil
     self.replaying=false
 end
+function R:CancelManualActions()
+    self.manualGeneration=self.manualGeneration+1
+    self.manualNotes={}
+end
 function R:Observe(name,fallback)
     if self.queue or self.replaying or not self:Enabled() or not validName(name) then return end
     local k=key(name)
@@ -119,7 +123,7 @@ function R:Observe(name,fallback)
     local existing,ambiguous=self.ledger:FindPendingName(k,key)
     if existing or ambiguous then return end
     local guid=self:Identity(name)
-    if guid==safe(UnitGUID,"player") then return end
+    if guid==safe(UnitGUID,"player") or (guid and self.ledger:HasPending(guid)) then return end
     local status=note and note.status or "pending"
     local sent=status=="sent"; if sent then status="pending" end
     local member=guid and safe(C_PartyInfo and C_PartyInfo.IsGUIDInGroup,guid)
@@ -139,8 +143,9 @@ function R:Observe(name,fallback)
         -- Post-hook runs after the native call. Do not send from a protected hook stack.
         -- One-shot callback uses only normal native chat restrictions and rechecks master state.
         if C_Timer and type(C_Timer.After)=="function" then
+            local generation=self.manualGeneration
             C_Timer.After(0,function()
-                if self:Enabled() and (visit.status=="pending" or visit.status=="accepted") then
+                if generation==self.manualGeneration and self:Enabled() and (visit.status=="pending" or visit.status=="accepted") then
                     visit.guildWhisper=ns.Guild:Whisper(name,guid,ns.Guild:Membership(guid))
                     self.ledger:Touch()
                 end
@@ -156,6 +161,17 @@ function R:InstallManualHooks()
         if type(C_PartyInfo[method])=="function" then
             local ok=pcall(hooksecurefunc,C_PartyInfo,method,function(name)
                 if self.queue or self.replaying then return end
+                if not self:Enabled() then
+                    if validName(name) then
+                        local now=GetTime()
+                        if not self.ignoredPrune or now>=self.ignoredPrune then
+                            for k,t in pairs(self.ignoredManual) do if now-t>120 then self.ignoredManual[k]=nil end end
+                            self.ignoredPrune=now+30
+                        end
+                        local k=key(name); self.ignoredManual[k]=now; self.manualNotes[k]=nil
+                    end
+                    return
+                end
                 self.inHook=true
                 local success=pcall(self.Observe,self,name,false)
                 self.inHook=false
@@ -169,7 +185,7 @@ function R:NoteManual(name,status,message)
     if self.replaying or not self:Enabled() or not validName(name) then return end
     local k=key(name); local t=GetTime()
     -- Recent unmatched auto results are not safe evidence for a new manual call.
-    if self.recentAuto[k] and t-self.recentAuto[k]<=120 then return end
+    if (self.recentAuto[k] and t-self.recentAuto[k]<=120) or (self.ignoredManual[k] and t-self.ignoredManual[k]<=120) then return end
     if not self.notePrune or t>=self.notePrune then
         for n,v in pairs(self.manualNotes) do if t-v.at>2 then self.manualNotes[n]=nil end end
         self.notePrune=t+2

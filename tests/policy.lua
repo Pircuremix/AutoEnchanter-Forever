@@ -200,6 +200,10 @@ reset(); C_PartyInfo.InviteUnit("a"); SlashCmdList.AUTOENCHANTER("debug on"); Sl
 check("debug clears manual pending welcome but preserves acceptance",visit("a").status=="accepted" and #messages==0)
 reset(); behavior="grouped"; C_PartyInfo.InviteUnit("a"); fire("CHAT_MSG_SYSTEM","a is already in a group."); behavior="unknown"; C_PartyInfo.InviteUnit("a")
 check("duplicate named error not recycled onto next manual invite",D.ledger.customers["manual:a"].visits[2].status=="pending")
+reset(); SlashCmdList.AUTOENCHANTER("off"); behavior="unknown"; C_PartyInfo.InviteUnit("a"); SlashCmdList.AUTOENCHANTER("on"); fire("CHAT_MSG_SYSTEM","You have invited a to join your group."); advance(0); join("a")
+check("late result from observed disabled manual invite ignored",not next(D.ledger.customers))
+reset(); guilded=true; guildMembers={"self","a"}; fire("PLAYER_GUILD_UPDATE"); fire("GUILD_ROSTER_UPDATE"); fire("CHAT_MSG_CHANNEL","Unmatched message","a","Common","Trade","","",2,7,"Trade",1,1,"a"); C_PartyInfo.InviteUnit("a"); SlashCmdList.AUTOENCHANTER("off"); SlashCmdList.AUTOENCHANTER("on"); advance(0)
+check("master toggle cancels pending manual guild whisper",#messages==0)
 -- Actual hot-path benchmark, mock native API. Preexisting history lookup by GUID;
 -- synchronous grouped result avoids building thousands of active requests.
 for _,n in ipairs({1000,10000,50000}) do
