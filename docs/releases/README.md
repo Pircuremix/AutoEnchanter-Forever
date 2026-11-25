@@ -11,4 +11,6 @@ Each release has a dedicated file used as the GitHub release body for v1.4.0 onw
 | 1.3.1 | [Icon, category and release automation](v1.3.1.md) |
 | 1.3.0 | [Forever API audit and regression suite](v1.3.0.md) |
 
+Post-publication CI evidence and live acceptance status are recorded separately in [verification/](../verification/README.md), so published release notes remain historical.
+
 See [published GitHub releases](https://github.com/Pircuremix/AutoEnchanter-Forever/releases) for actual availability.

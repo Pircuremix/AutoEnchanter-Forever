@@ -1,5 +1,15 @@
 # Changelog
 
+Detailed version notes are maintained under [docs/releases/](docs/releases/README.md). Dates refer to release history; availability is confirmed by GitHub Releases.
+
+Post-release test evidence is maintained under [docs/verification/](docs/verification/README.md).
+
+## Unreleased — documentation only
+
+- Organized documentation navigation and corrected stale architecture, settings, test-suite and WowUp instructions.
+- Recorded v1.6.0 publication evidence, benchmark results, the resolved intermediate TOC failure, and outstanding live acceptance checks.
+- Updated contributor workflow to keep new modules and TOC entries together. No runtime or package changes.
+
 ## 1.6.0 — Smart Customer Protection
 
 ### Added
@@ -33,8 +43,6 @@
 ### Known limitations
 - Live trade success signal and UI rendering require acceptance testing; uncertain transactions excluded from totals. [Detailed notes](docs/releases/v1.5.0.md).
 
-Detailed version notes are maintained under [docs/releases/](docs/releases/README.md). Dates refer to release history; availability is confirmed by GitHub Releases.
-
 ## 1.4.0 — Customer welcome and raid management
 
 - Added confirmed-GUID customer acceptance tracking and editable PARTY/RAID welcome chat.
@@ -45,10 +53,10 @@ Detailed version notes are maintained under [docs/releases/](docs/releases/READM
 - Added integration tests, TOC-driven packaging, per-version release notes and maintainer/AI guide.
 - New features default off; live-client acceptance pending. [Detailed release notes](docs/releases/v1.4.0.md).
 
-## Unreleased — documentation
+## Documentation maintenance after 1.3.2 (historical; no version bump)
 
 - Expanded public-facing README and added a dedicated WowUp integration and troubleshooting guide.
-- Corrected outdated private-repository and CI statements. Documentation only; no new addon version.
+- Corrected outdated private-repository and CI statements.
 
 ## 1.3.2 — 2026-11-24 — WowUp update test (release candidate)
 

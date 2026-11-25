@@ -53,7 +53,7 @@ Do not install release.json or the test/docs folders. Start WoW and enable Auto 
 
 ### Set up the new features
 
-Open **Escape > Options > AddOns > Auto Enchanter**, or type `/ae settings` (also `/ae config`) to open the new dashboard's Settings tab. All three new features default to **off**, including when upgrading from 1.3.x. Existing settings are preserved.
+Open **Escape > Options > AddOns > Auto Enchanter**, or type `/ae settings` (also `/ae config`) to open the new dashboard's Settings tab. The three optional group automations introduced in 1.4.0 default to **off** for new installations and upgrades from 1.3.x. The 1.6.0 customer policies are automatic, and the guild whisper defaults to enabled with editable text. Existing settings are preserved.
 
 | Setting | Default | Behavior |
 |---|---|---|
@@ -85,7 +85,7 @@ Automatic conversion also applies to ordinary parties with manually invited memb
 
 ### Saved settings and TBC migration
 
-Account-wide `AutoEnchanterDB` remains the only SavedVariables table. New fields are initialized without replacing valid old whitelist/settings. Pending requests, timers, block flags and counters are session-only. To copy a TBC whitelist, close both clients, back up the destination, and copy the old account's SavedVariables/AutoEnchanter.lua into the equivalent Forever account directory. Do not confuse it with addon source. Copying replaces the destination table. Never upload real SavedVariables or chat logs.
+Account-wide `AutoEnchanterDB` remains the only SavedVariables table. New fields are initialized without replacing valid old whitelist/settings. Pending welcome/marker requests, timers and session block flags are session-only. The customer ledger (including pending invitation history), policy deadlines, offense history and business totals persist across normal logout/reload. To copy a TBC whitelist, close both clients, back up the destination, and copy the old account's SavedVariables/AutoEnchanter.lua into the equivalent Forever account directory. Do not confuse it with addon source. Copying replaces the destination table. Never upload real SavedVariables or chat logs.
 
 ## Customer database and business dashboard (1.5.0)
 
@@ -125,7 +125,7 @@ Both `/ae` and `/autoenchanter` are supported.
 | `/ae test <phrase>` | Inspect match without inviting |
 | `/ae debug [on/off]` | Simulation mode; no actual invites, chat, markers or conversion |
 | `/ae popup [on/off]` | Right-click whitelist learning |
-| `/ae settings`, `/ae config` | Open native settings |
+| `/ae settings`, `/ae config` | Open Business Manager Settings tab |
 | `/ae welcome on/off` | Enable or disable welcome chat |
 | `/ae message <text>` | Save welcome text (empty clears it) |
 | `/ae marker on/off/1-8` | Toggle or enable/select self-marker |
@@ -170,7 +170,7 @@ Group automation separately checks readable roster identity, chat lockdown, exis
 
 ## Test and release procedure
 
-Run `bash scripts/test.sh 5.1` and `bash scripts/test.sh 5.4` from the repository root (Lua and luac installed). Run `bash scripts/package.sh` with zip, unzip and jq installed. GitHub Actions executes both versions and validates the exact install archive before publication. The historic v1.3.0 local run remains in TEST-RESULTS.txt; current CI status is linked at the top. Offline mocks validate control flow, not Blizzard's protected runtime or server delivery.
+Run `bash scripts/test.sh 5.1` and `bash scripts/test.sh 5.4` from the repository root (Lua and luac installed). Run `bash scripts/package.sh` with zip, unzip and jq installed. GitHub Actions executes both versions and validates the exact install archive before publication. The historic v1.3.0 local run remains in TEST-RESULTS.txt. See [versioned verification records](docs/verification/README.md) for exact tested commits, CI evidence, benchmarks and publication status; current CI status is linked at the top. Offline mocks validate control flow, not Blizzard's protected runtime or server delivery.
 
 ### Live acceptance checklist
 
@@ -189,7 +189,10 @@ Run `bash scripts/test.sh 5.1` and `bash scripts/test.sh 5.4` from the repositor
 
 ## Project documentation
 
+- [Documentation index](docs/README.md)
 - [Architecture and contracts](docs/ARCHITECTURE.md)
+- [Customer policy](docs/CUSTOMER-POLICY.md) · [Invitation outcomes](docs/INVITE-OUTCOMES.md) · [Performance](docs/PERFORMANCE.md)
+- [Verification records](docs/verification/README.md) · [Live acceptance checklist](docs/verification/LIVE-CHECKLIST.md)
 - [Database schema](docs/DATABASE.md) · [Trade tracking](docs/TRADE-TRACKING.md) · [UI compatibility](docs/UI-COMPATIBILITY.md)
 - [WowUp integration](docs/WOWUP.md)
 - [Version notes](docs/releases/README.md) — one file per published version
