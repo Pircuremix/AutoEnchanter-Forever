@@ -25,6 +25,7 @@ function D:Init(db,log)
     self.ready=type(l)=="table" and l.schema==1 and type(l.customers)=="table" and integer(l.nextID) and l.nextID>=1
     self.ledger=self.ready and l or nil
     self.pending,self.active={},{}
+    self.activeOwner=nil
     self.revision=0; self.timerGeneration=0; self.timerAt=nil
     if not self.ready then log("Customer ledger schema unsupported; preserved without modification."); return end
     -- Rebuild session indexes from records; never rewrite historical outcomes.
@@ -34,9 +35,6 @@ function D:Init(db,log)
                 if type(v)=="table" and integer(v.id) and integer(v.invited) and text(v.owner) then
                     l.nextID=math.max(l.nextID,v.id+1)
                     if v.status=="pending" then self.pending[v.id]={guid=guid,visit=v}
-                    elseif v.status=="accepted" and not v.closed and v.owner==owner() then
-                        local old=self.active[guid]
-                        if not old or old.id<v.id then self.active[guid]=v end
                     end
                 end
             end
@@ -44,7 +42,10 @@ function D:Init(db,log)
     end
     self:Expire()
 end
-function D:Touch() self.revision=self.revision+1 end
+function D:Touch()
+    self.revision=self.revision+1
+    if ns.Dashboard and ns.Dashboard.QueueRefresh then ns.Dashboard:QueueRefresh() end
+end
 function D:Schedule()
     if not self.ready or not C_Timer or type(C_Timer.After)~="function" then return end
     local now=clock()
@@ -113,6 +114,19 @@ function D:OnRoster()
     local now,own=clock(),owner()
     if not integer(now) or not text(own) then return end
     self:Expire()
+    if self.activeOwner~=own then
+        self.activeOwner=own; self.active={}
+        for guid,c in pairs(self.ledger.customers) do
+            if type(c)=="table" and type(c.visits)=="table" then
+                for _,v in ipairs(c.visits) do
+                    if type(v)=="table" and v.status=="accepted" and not v.closed and v.owner==own then
+                        local old=self.active[guid]
+                        if not old or old.id<v.id then self.active[guid]=v end
+                    end
+                end
+            end
+        end
+    end
     local check=C_PartyInfo and C_PartyInfo.IsGUIDInGroup
     local newest={}
     for _,p in pairs(self.pending) do
@@ -163,7 +177,25 @@ function D:Decline(message)
     if match then
         self:Resolve(match,"declined",now,"localized system message")
         self:Schedule()
+        return match.guid
     end
+end
+function D:FailRecent()
+    if not self.ready then return end
+    local now,own=clock(),owner()
+    if not integer(now) then return end
+    local match
+    for _,p in pairs(self.pending) do
+        if p.visit.owner==own and now-p.visit.invited<=10 and now>=p.visit.invited then
+            if match then return end -- ambiguous block; do not misattribute
+            match=p
+        end
+    end
+    if match then self:Resolve(match,"failed",now,"native invite block"); self:Schedule() end
+end
+function D:HasPending(guid)
+    for _,p in pairs(self.pending) do if p.guid==guid and p.visit.owner==owner() then return true end end
+    return false
 end
 function D:Active(guid)
     if not self.ready or not text(guid) then return end

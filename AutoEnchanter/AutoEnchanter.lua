@@ -749,6 +749,7 @@ frame:SetScript("OnEvent", function(self, event, ...)
         if db and readable(source) and readable(action) and (source == addonName or source == "AutoEnchanter") and type(action) == "string" then group:Blocked(action) end
         if readable(source) and readable(action) and (source == addonName or source == "AutoEnchanter") and type(action) == "string" and action:lower():find("invite", 1, true) and not inviteBlocked then
             inviteBlocked = true
+            if db then ledger:FailRecent() end
             printSys("Game blocked automatic invites. No further attempts this session; use the native player menu or /invite.")
             if lastAttempt and GetTime() - lastAttemptTime < 10 then printSys("Last matching customer: " .. lastAttempt) end
         end
@@ -763,17 +764,18 @@ frame:SetScript("OnEvent", function(self, event, ...)
         InitModernMenus()
         options:Init(group, printSys)
         minimap:Init(db,dashboard,printSys)
-        ledger:OnRoster()
         self:UnregisterEvent("PLAYER_LOGIN")
     elseif event == "PLAYER_ENTERING_WORLD" then
         RefreshIdentity()
-        ledger:OnRoster(); group:OnRoster(); dashboard:Refresh()
+        ledger:OnRoster(); group:OnRoster()
     elseif event == "GROUP_ROSTER_UPDATE" or event == "PARTY_LEADER_CHANGED" then
         ledger:OnRoster(); group:OnRoster(); dashboard:Refresh()
     elseif event=="CHAT_MSG_SYSTEM" then
-        ledger:Decline((...)); trade:Event(event,...); dashboard:Refresh()
+        local declined=ledger:Decline((...))
+        if declined and not ledger:HasPending(declined) then group.pending[declined]=nil end
+        trade:Event(event,...)
     elseif event:find("^TRADE_") or event=="UI_INFO_MESSAGE" or event=="UI_ERROR_MESSAGE" or event=="ENCHANT_SPELL_COMPLETED" or event=="UNIT_SPELLCAST_SUCCEEDED" or event=="PLAYER_TRADE_MONEY" or event=="PLAYER_TRADE_CURRENCY" then
-        trade:Event(event,...); dashboard:Refresh()
+        trade:Event(event,...)
     else
         FastChatHandler(event, ...)
     end

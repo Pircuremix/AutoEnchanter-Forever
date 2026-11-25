@@ -57,7 +57,7 @@ function T:Finish(s,confirmed,reason)
     s.done=true
     if self.current==s then self.current=nil end
     local x=s.snapshot
-    if confirmed and s.accepted and x then
+    if confirmed and s.accepted and x and not s.ambiguous then
         local tip=0
         if x.incoming>0 and x.outgoing==0 and not x.itemsIn and not x.itemsOut and not x.receivedEnchant and not x.currency then tip=x.incoming end
         self.ledger:AddTrade(s.guid,s.visit,{at=self.ledger:Now(),copper=tip,enchants=x.givenEnchant and 1 or 0,
@@ -73,13 +73,18 @@ function T:Cancel()
     if s then s.done=true; self.current=nil; self.stats.canceled=self.stats.canceled+1 end
 end
 function T:Event(event,...)
+    if event=="UNIT_SPELLCAST_SUCCEEDED" then
+        local unit=(...)
+        if not readable(unit) or unit~="player" or not self.debug then return end
+    end
     self:Trace(event)
     if event=="TRADE_SHOW" then
+        local ambiguous=self.current~=nil
         if self.current then self:Finish(self.current,false,"new trade before completion evidence") end
         local guid=value(UnitGUID,"npc")
         local v=self.ledger:Active(guid)
         if not v then return end
-        self.current={guid=guid,visit=v,accepted=false,closed=false}
+        self.current={guid=guid,visit=v,accepted=false,closed=false,ambiguous=ambiguous}
         self:Snapshot(self.current)
         return
     end
@@ -102,8 +107,8 @@ function T:Event(event,...)
         if not readable(msg) or type(msg)~="string" then return end
         if readable(ERR_TRADE_COMPLETE) and type(ERR_TRADE_COMPLETE)=="string" and msg==ERR_TRADE_COMPLETE then
             self:Finish(s,true,"incomplete final snapshot")
-        elseif (type(ERR_TRADE_CANCELLED)=="string" and readable(ERR_TRADE_CANCELLED) and msg==ERR_TRADE_CANCELLED)
-            or (type(ERR_TRADE_CANCELED)=="string" and readable(ERR_TRADE_CANCELED) and msg==ERR_TRADE_CANCELED) then self:Cancel() end
+        elseif (readable(ERR_TRADE_CANCELLED) and type(ERR_TRADE_CANCELLED)=="string" and msg==ERR_TRADE_CANCELLED)
+            or (readable(ERR_TRADE_CANCELED) and type(ERR_TRADE_CANCELED)=="string" and msg==ERR_TRADE_CANCELED) then self:Cancel() end
     elseif event=="ENCHANT_SPELL_COMPLETED" or event=="UNIT_SPELLCAST_SUCCEEDED" then
         -- Diagnostic only: successful cast alone is not a delivered enchant.
     elseif not s.closed then

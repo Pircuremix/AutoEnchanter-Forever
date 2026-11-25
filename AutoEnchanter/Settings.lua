@@ -86,7 +86,7 @@ function UI:Build(parent,x,y)
             for i,b in pairs(thresholdButtons) do b:SetText((i==d.raidThreshold and "* " or "")..i) end
         end
         panel:SetScript("OnShow",function() refresh(); edit:SetText(group.db.welcomeMessage); note:SetText("{customer}  {player}  {zone}  |  Channel: automatic PARTY / RAID") end)
-        refresh()
+        refresh(); edit:SetText(group.db.welcomeMessage)
 end
 function UI:Open()
     if self.category and Settings and type(Settings.OpenToCategory)=="function" then

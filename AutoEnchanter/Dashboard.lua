@@ -26,7 +26,7 @@ end
 function D:Init(db,ledger,options,log)
     self.db,self.ledger,self.options,self.log=db,ledger,options,log
     self.tab,self.sort,self.desc,self.page,self.visitPage,self.period,self.filter="Customers","tip",true,1,1,0,"all"
-    self.query=""; self.selected=nil; self.confirm=nil
+    self.query=""; self.selected=nil; self.confirm=nil; self.refreshQueued=false
     if type(db.dashboardPosition)~="table" then db.dashboardPosition={} end
 end
 function D:Rows()
@@ -34,7 +34,7 @@ function D:Rows()
     local since
     if now and self.period==-1 then
         local ok,t=pcall(date,"*t",now)
-        if ok and type(t)=="table" then t.hour,t.min,t.sec=0,0,0; since=time(t) end
+        if ok and type(t)=="table" then t.hour,t.min,t.sec=0,0,0; local good,v=pcall(time,t); if good then since=v end end
     elseif now and self.period>0 then since=now-self.period*86400 end
     local rows=self.ledger:Rows(since)
     local out={}
@@ -88,6 +88,12 @@ function D:Build()
         f:SetScale(math.min(1,UIParent:GetWidth()/1040,UIParent:GetHeight()/710))
     end
     local pos=self.db.dashboardPosition
+    local fit=math.min(1,UIParent:GetWidth()/1040,UIParent:GetHeight()/710)
+    if type(pos.scale)=="number" then f:SetScale(math.max(.35,math.min(fit,pos.scale))) end
+    local function resize(delta)
+        local scale=math.max(math.min(.55,fit),math.min(fit,f:GetScale()+delta))
+        f:SetScale(scale); pos.scale=scale
+    end
     if type(pos.x)=="number" and type(pos.y)=="number" then f:ClearAllPoints(); f:SetPoint("CENTER",UIParent,"CENTER",pos.x,pos.y) end
     tint(f,.075,.08,.10,.99)
     local header=CreateFrame("Frame",nil,f); header:SetSize(1020,54); header:SetPoint("TOPLEFT"); tint(header,.12,.12,.16,1)
@@ -103,6 +109,8 @@ function D:Build()
     end)
     label(header,18,-12,500,"AutoEnchanter  |  Business Manager","GameFontNormalLarge")
     self.status=button(header,820,-14,130,"AE ON",function() SlashCmdList.AUTOENCHANTER(self.db.enabled and "off" or "on"); self:Refresh() end)
+    button(header,735,-14,35,"-",function() resize(-.05) end)
+    button(header,774,-14,35,"+",function() resize(.05) end)
     button(header,967,-14,38,"X",function() f:Hide() end)
     self.tabs={}
     for i,name in ipairs({"Overview","Customers","Settings"}) do
@@ -163,7 +171,8 @@ function D:Build()
     button(self.config,660,-220,310,"Toggle minimap button",function() if ns.Minimap then ns.Minimap:SetHidden(not self.db.minimapHidden) end; self:Refresh() end)
     self.configState=label(self.config,660,-260,320,"")
     button(self.config,660,-285,310,"Toggle debug mode",function() SlashCmdList.AUTOENCHANTER("debug"); self:Refresh() end)
-    self.whitelistText=label(self.config,660,-330,320,"Whitelist (first 10 entries)")
+    button(self.config,660,-315,310,"Toggle right-click learning",function() SlashCmdList.AUTOENCHANTER("popup"); self:Refresh() end)
+    self.whitelistText=label(self.config,660,-351,320,"Whitelist (first 10 entries)")
     local add=edit(self.config,660,-570,235)
     button(self.config,900,-570,70,"Add",function() SlashCmdList.AUTOENCHANTER("add "..add:GetText()); add:SetText(""); self:Refresh() end)
     local rem=edit(self.config,660,-604,235)
@@ -179,6 +188,13 @@ function D:Build()
     f:SetScript("OnHide",function() self.confirm=nil; self.exportPanel:Hide() end)
     if UISpecialFrames then UISpecialFrames[#UISpecialFrames+1]="AutoEnchanterDashboard" end
     f:Hide()
+end
+function D:QueueRefresh()
+    if not self.frame or not self.frame:IsShown() or self.refreshQueued then return end
+    if C_Timer and type(C_Timer.After)=="function" then
+        self.refreshQueued=true
+        C_Timer.After(0.1,function() self.refreshQueued=false; self:Refresh() end)
+    else self:Refresh() end
 end
 function D:Refresh()
     if not self.frame or not self.frame:IsShown() then return end
@@ -201,7 +217,7 @@ function D:Refresh()
         if r then
             row.bg:SetColorTexture(r.guid==self.selected and .27 or .13,.14,.18,1)
             local vals={r.name,r.accepted,r.declined,r.pending,gold(r.tip),r.enchants,gold(r.avg),rate(r.rate),self.ledger:Stamp(r.last)}
-            for j,v in ipairs(vals) do row.cells[j]:SetText(fmt(v)); row.cells[j]:SetTextColor(j==2 and .35 or 1,j==3 and .45 or 1,(j==5 or j==7) and .45 or 1) end
+            for j,v in ipairs(vals) do row.cells[j]:SetText(fmt(v)); row.cells[j]:SetTextColor(j==2 and .35 or 1,j==3 and .45 or 1,(j==2 or j==3 or j==5 or j==7) and .45 or 1) end
         end
     end
     self.deleteButton:SetText(self.confirm==self.selected and self.selected and "Confirm delete" or "Delete selected")
@@ -218,16 +234,17 @@ function D:Refresh()
         local v=visits[(self.visitPage-1)*6+i]
         fs:SetText(v and ("%s    |    %s    |    %s    |    %d items    |    %s    |    %s    |    %d unverified"):format(v.localTime or self.ledger:Stamp(v.invited),v.status,v.enchanter or "?",v.enchants or 0,gold(v.tipCopper),gold(v.enchants>0 and v.tipCopper/v.enchants or -1),v.unverified or 0) or "")
     end
-    self.configState:SetText(("Minimap: %s\nDebug: %s"):format(self.db.minimapHidden and "hidden" or "shown",self.db.debug and "on" or "off"))
+    self.configState:SetText(("Minimap: %s | Debug: %s | Learning: %s"):format(self.db.minimapHidden and "hidden" or "shown",self.db.debug and "on" or "off",self.db.popupEnabled and "on" or "off"))
     local lines={"Whitelist (first 10 entries; /ae list for all)"}
     for i=1,math.min(10,#self.db.whitelist) do lines[#lines+1]=i..". "..self.db.whitelist[i] end
     self.whitelistText:SetText(table.concat(lines,"\n"))
 end
 function D:Open(tab)
     if tab then self.tab=tab end
+    if self.buildFailed then self.options:Open(); return end
     if not self.frame then
         local ok,err=pcall(function() self:Build() end)
-        if not ok then if self.frame then self.frame:Hide(); self.frame=nil end; self.log("Dashboard unavailable: "..tostring(err)); self.options:Open(); return end
+        if not ok then if self.frame then self.frame:Hide(); self.frame=nil end; self.buildFailed=true; self.log("Dashboard unavailable: "..tostring(err)); self.options:Open(); return end
     end
     self.frame:Show(); self:Refresh()
 end
