@@ -26,7 +26,10 @@ C_PartyInfo = {CanInvite=function() return allowed end, IsPartyFull=function() r
     if behavior=='blocked' then fire('ADDON_ACTION_BLOCKED','AutoEnchanter','C_PartyInfo.InviteUnit') end
 end}
 AutoEnchanterDB = {whitelist={'LF enchanter 15 agility gloves', 'LF enchanter 15 agility gloves', false, {}, '  '}, debug=true, popupEnabled=true, enabled=true}
-assert(loadfile('AutoEnchanter/AutoEnchanter.lua'))('AutoEnchanter')
+local ns = {}
+assert(loadfile('AutoEnchanter/Group.lua'))('AutoEnchanter',ns)
+assert(loadfile('AutoEnchanter/Settings.lua'))('AutoEnchanter',ns)
+assert(loadfile('AutoEnchanter/AutoEnchanter.lua'))('AutoEnchanter',ns)
 fire('ADDON_LOADED','Other'); fire('ADDON_LOADED','AutoEnchanter'); fire('PLAYER_LOGIN'); fire('PLAYER_ENTERING_WORLD')
 local function cmd(s) SlashCmdList.AUTOENCHANTER(s); return logs[#logs] or '' end
 local function test(s) return cmd('test '..s):find(']|r MATCH (no invite',1,true) end
@@ -68,7 +71,7 @@ local native=C_PartyInfo.InviteUnit; C_PartyInfo.InviteUnit=nil; chat(request,'N
 behavior='error'; chat(request,'Error Test','Player-error'); check('call error caught',#invites==7 and logs[#logs]:find('call failed',1,true)); behavior='normal'
 fire('ADDON_ACTION_BLOCKED','OtherAddon','C_PartyInfo.InviteUnit'); chat(request,'Other Block','Player-other'); check('unrelated block ignored',#invites==8)
 behavior='blocked'; chat(request,'Blocked Test','Player-block'); check('own blocked action detected',#invites==9); behavior='normal'; chat(request,'After Block','Player-after'); check('no more native calls after block',#invites==9)
-check('status records block',cmd('status'):find('blocked=true',1,true)); check('diagnostics record failure',cmd('diag'):find('failed calls=1',1,true))
+check('status records block',cmd('status'):find('blocked=true',1,true)); cmd('diag'); local found=false; for _,line in ipairs(logs) do if line:find('failed calls=1',1,true) then found=true end end; check('diagnostics record failure',found)
 -- Nonmatching workload uses actual event handler, without calling any invite API.
 local start=os.clock(); for i=1,10000 do chat('WTS unrelated item '..i,'Load '..i,'Player-load'..i) end
 check('10000 unrelated messages no invites',#invites==9)

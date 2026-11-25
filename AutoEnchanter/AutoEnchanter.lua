@@ -1,7 +1,8 @@
--- AutoEnchanter Forever 1.3.2 (release candidate)
+-- AutoEnchanter Forever 1.4.0 (release candidate)
 -- Normalized matching: ignores filler words, punctuation, spaces, and "Xg" / "X gold" patterns
 local ADDON = "Auto Enchanter"
-local addonName = ...
+local addonName, ns = ...
+local group, options = ns.Group, ns.Options
 local function readable(v)
     return not (issecretvalue and issecretvalue(v))
 end
@@ -406,12 +407,14 @@ local function DoInvite(playerName, guid)
         return
     end
     local party = C_PartyInfo
+    local trackable = false
     if party and party.IsGUIDInGroup and readable(guid) and type(guid) == "string" and guid ~= "" then
         local ok, member = pcall(party.IsGUIDInGroup, guid)
         if not ok or not readable(member) or member == true then
             stats.ineligible = stats.ineligible + 1
             return
         end
+        trackable = member == false
     end
     if party and party.CanInvite then
         local ok, allowed = pcall(party.CanInvite)
@@ -444,6 +447,7 @@ local function DoInvite(playerName, guid)
         printSys("Invite call failed. Use /invite " .. playerName)
     else
         printSys("Invite API called for " .. playerName .. " (delivery unconfirmed)")
+        if trackable then group:TrackInvite(playerName, guid) end
     end
 end
 
@@ -561,6 +565,10 @@ SlashCmdList["AUTOENCHANTER"] = function(msg)
     local cmd, rest = msg:match("^(%S*)%s*(.-)$")
     cmd = (cmd or ""):lower()
     rest = rest or ""
+    if db then
+        if cmd == "settings" or cmd == "config" then options:Open(); return end
+        if group:Command(cmd, rest) then return end
+    end
 
     if cmd == "test" and rest ~= "" then
         if not db then return end
@@ -570,11 +578,12 @@ SlashCmdList["AUTOENCHANTER"] = function(msg)
     end
     if cmd == "diagnostics" or cmd == "diag" then
         local version, build, _, interface = GetBuildInfo()
-        printSys(("Version 1.3.2; client=%s build=%s interface=%s"):format(tostring(version), tostring(build), tostring(interface)))
+        printSys(("Version 1.4.0; client=%s build=%s interface=%s"):format(tostring(version), tostring(build), tostring(interface)))
         local party = C_PartyInfo or {}
         printSys(("InviteUnit=%s CanInvite=%s IsPartyFull=%s IsGUIDInGroup=%s"):format(type(party.InviteUnit), type(party.CanInvite), type(party.IsPartyFull), type(party.IsGUIDInGroup)))
         printSys(("Menu.ModifyMenu=%s issecretvalue=%s; automatic invites blocked=%s"):format(type(Menu and Menu.ModifyMenu), type(issecretvalue), tostring(inviteBlocked == true)))
         printSys(("Simulated=%d; failed calls=%d; ineligible=%d; API calls are not delivery confirmations"):format(stats.simulated, stats.failed, stats.ineligible))
+        group:Status()
         return
     end
     if cmd == "status" then
@@ -600,6 +609,8 @@ SlashCmdList["AUTOENCHANTER"] = function(msg)
             return
         end
         db.enabled = false
+        group:ClearPending()
+        group:ConfigChanged()
         printSys("Auto Enchanter -> DISABLED")
         AE_Debug("Addon disabled via slash")
         return
@@ -618,6 +629,7 @@ SlashCmdList["AUTOENCHANTER"] = function(msg)
         else
             db.debug = not db.debug
         end
+        group:ConfigChanged()
         printSys("DEBUG -> " .. (db.debug and "ON" or "OFF"))
         return
     end
@@ -683,7 +695,7 @@ SlashCmdList["AUTOENCHANTER"] = function(msg)
         return
     end
 
-    printSys("Usage: /ae on | off | add <phrase> | remove <index|phrase> | list | debug [on|off] | popup [on|off] | test <phrase> | status | diagnostics")
+    printSys("Usage: /ae on | off | add <phrase> | remove <index|phrase> | list | debug [on|off] | popup [on|off] | test <phrase> | status | diagnostics | settings | groupstatus | welcome | message | marker | raid")
 end
 
 -- SavedVariables: preserve valid phrases and existing boolean settings.
@@ -703,6 +715,7 @@ local function InitDB()
         if type(db[k]) ~= "boolean" then db[k] = defaults[k] end
     end
     RebuildWhitelistLookup()
+    group:Init(db, printSys)
 end
 
 local function RefreshIdentity()
@@ -713,12 +726,13 @@ end
 
 -- Event/frame
 local frame = CreateFrame("Frame", "AutoEnchanterFrame")
-for _, event in ipairs({"ADDON_LOADED", "PLAYER_LOGIN", "PLAYER_ENTERING_WORLD", "CHAT_MSG_SAY", "CHAT_MSG_YELL", "CHAT_MSG_CHANNEL", "ADDON_ACTION_BLOCKED", "ADDON_ACTION_FORBIDDEN"}) do
+for _, event in ipairs({"ADDON_LOADED", "PLAYER_LOGIN", "PLAYER_ENTERING_WORLD", "CHAT_MSG_SAY", "CHAT_MSG_YELL", "CHAT_MSG_CHANNEL", "GROUP_ROSTER_UPDATE", "PARTY_LEADER_CHANGED", "ADDON_ACTION_BLOCKED", "ADDON_ACTION_FORBIDDEN"}) do
     frame:RegisterEvent(event)
 end
 frame:SetScript("OnEvent", function(self, event, ...)
     if event == "ADDON_ACTION_BLOCKED" or event == "ADDON_ACTION_FORBIDDEN" then
         local source, action = ...
+        if db and readable(source) and readable(action) and (source == addonName or source == "AutoEnchanter") and type(action) == "string" then group:Blocked(action) end
         if readable(source) and readable(action) and (source == addonName or source == "AutoEnchanter") and type(action) == "string" and action:lower():find("invite", 1, true) and not inviteBlocked then
             inviteBlocked = true
             printSys("Game blocked automatic invites. No further attempts this session; use the native player menu or /invite.")
@@ -731,11 +745,15 @@ frame:SetScript("OnEvent", function(self, event, ...)
     elseif event == "PLAYER_LOGIN" then
         if not db then InitDB() end
         RefreshIdentity()
-        printSys("Loaded 1.3.2. ENABLED=" .. (db.enabled and "ON" or "OFF") .. "; DEBUG=" .. (db.debug and "ON" or "OFF") .. "; popup=" .. (db.popupEnabled and "ON" or "OFF"))
+        printSys("Loaded 1.4.0. ENABLED=" .. (db.enabled and "ON" or "OFF") .. "; DEBUG=" .. (db.debug and "ON" or "OFF") .. "; popup=" .. (db.popupEnabled and "ON" or "OFF"))
         InitModernMenus()
+        options:Init(group, printSys)
         self:UnregisterEvent("PLAYER_LOGIN")
     elseif event == "PLAYER_ENTERING_WORLD" then
         RefreshIdentity()
+        group:OnRoster()
+    elseif event == "GROUP_ROSTER_UPDATE" or event == "PARTY_LEADER_CHANGED" then
+        group:OnRoster()
     else
         FastChatHandler(event, ...)
     end
