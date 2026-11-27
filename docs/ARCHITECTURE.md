@@ -1,6 +1,6 @@
 # Architecture and maintenance contracts
 
-Source version: 1.6.2. Forever interface 16001. This document describes actual implementation, not a design proposal.
+Source version: 1.6.3. Forever interface 16001. This document describes actual implementation, not a design proposal.
 
 ## Runtime layout and load order
 
@@ -34,7 +34,7 @@ Group:TrackInvite stores an entry by GUID only when a welcome or marker is enabl
 
 - Pending -> accepted/ready: matching GUID appears in current roster within TTL.
 - Pending -> expired: next prune after TTL; no action. Clear on master disable, debug, invite block, or when both customer actions are switched off.
-- Ready -> consumed: remove from queue before action; recheck current membership; marker then chat are independent. Never requeue on failure.
+- Ready -> consumed: remove from queue before action; recheck membership. A bounded marker batch may await roster readiness or native confirmation before sending; no retry of an issued native call, no duplicate welcome. Clear session batch on off/debug/empty group.
 - Ready -> waiting: if eligible threshold reached, one conversion request is made; queue held until confirmed raid, failed call, next below-threshold roster, or five-second timeout. If no usable group then queued actions are discarded.
 - Conversion latch: one attempt per eligible threshold cycle, reset on a below-threshold ordinary party or solo roster. A raid does not auto-convert back. Separate dry-run latch. Session block flags persist until reload. Native conversion may open a confirmation prompt; never invoke ConfirmConvertToRaid.
 
@@ -103,3 +103,7 @@ Policy:Init reconstructs accepted, verified decline, tip, unverified, grouped, b
 InviteResults installs read-only secure post-hooks on native InviteUnit/ConfirmInviteUnit when available. The existing auto call queue suppresses self-observation; unmatched outgoing sent evidence can provide a fallback. Manual requests use the same ledger, with optional source and identityUnverified fields in schema 2. Only observed exact full-name home-roster membership binds a provisional manual visit to a GUID; no unrelated roster joins are counted. Known GUID manual invitations share policies. Name-only outcomes remain visible but cannot impose restrictions. Manual pending names have an indexed owner/name key to suppress overlapping auto invites. Recent chat GUID observations and native unit identities are only consulted after manual calls; auto name lookup is constant time. See MANUAL-INVITES.md.
 
 Manual welcome action eligibility is session-only, cleared on master-off/debug and not restored on reload. Duplicate sent evidence for an active roster GUID does not create a second accepted visit. A manual acceptance observed inside a secure post-hook defers group automation to a one-shot timer.
+
+## 1.6.3 marker confirmation
+
+MarkSelf distinguishes first-call readiness from native call success and observed marker. Incomplete roster or false CanBeRaidTarget permits one 0.35s recheck before any native call; unreadable self mark, occupied marker, lockdown, permission and block checks remain conservative. After a native call with no observable positive mark, wait for RAID_TARGET_UPDATE or one 1s timeout. Batch new accepted welcomes behind the same request; never resend an issued request. Re-read membership and group channel before chat, respect existing raid-conversion wait. Report current mark, confirmed/unconfirmed counts and last reason in /ae groupstatus. No invite-path work. Exact live root cause of reported missing mark remains unconfirmed.

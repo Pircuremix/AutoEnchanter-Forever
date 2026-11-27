@@ -10,6 +10,13 @@ Post-release test evidence is maintained under [docs/verification/](docs/verific
 - Recorded v1.6.0 publication evidence, benchmark results, the resolved intermediate TOC failure, and outstanding live acceptance checks.
 - Updated contributor workflow to keep new modules and TOC entries together. No runtime or package changes.
 
+## 1.6.3 — Marker confirmation and diagnostics
+
+- Wait briefly for an incomplete group roster before first self-marker attempt.
+- Confirm actual native raid target update before sending queued welcome, with a bounded timeout and no native-call retry.
+- Preserve existing and occupied marks, clear queued welcomes on off/debug/leave, and expose marker diagnostics.
+- Added delayed marker, silent failure and transient roster regression tests. No invitation-path changes.
+
 ## 1.6.2 — Manual invitation accounting
 
 - Track manual/external native invites while AE is enabled and not debugging; include accepted services, tips, enchants, welcome, marker and policies in the same ledger.

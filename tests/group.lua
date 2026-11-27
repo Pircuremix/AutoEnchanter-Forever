@@ -27,12 +27,17 @@ function GetNumGroupMembers() return #roster>=2 and #roster or 0 end
 function IsInInstance() return inside end
 function UnitIsGroupLeader() return leader end
 function UnitIsGroupAssistant() return assistant end
-function GetRaidTargetIndex(unit) return markers[id(unit)] end
+function GetRaidTargetIndex(unit)
+    if behavior and behavior.unreadableOther and unit~="player" then return secret end
+    return markers[id(unit)]
+end
+function CanBeRaidTarget() return not (behavior and behavior.ineligible) end
 function SetRaidTarget(unit,mark)
     assert(unit=="player" and mark>=1 and mark<=8,"only self positive markers")
     marks[#marks+1]=mark
     if behavior.marker=="error" then error("mock marker blocked") end
     if behavior.marker=="blocked" then frames[1].scripts.OnEvent(frames[1],"ADDON_ACTION_BLOCKED","AutoEnchanter","SetRaidTarget"); return end
+    if behavior.marker=="delayed" or behavior.marker=="silent" then return end
     markers.self=mark
 end
 local function frame()
@@ -215,4 +220,35 @@ setup(); cmd("message {MARKER}"); cmd("raid 3"); invite("a"); join("a"); invite(
 check("delayed raid welcome reads latest actual marker",messages[2].channel=="RAID" and messages[2].msg=="{rt8}")
 setup(); cmd("message "..template); invite("a","LongCustomerName"); join("a")
 check("overlong expanded live welcome skipped",#messages==0 and ns.Group.stats.chatSkipped==1)
+-- Live-like marker update: native API returns before the raid target arrives.
+setup(); cmd("marker 1"); cmd("message Find me at {MARKER}"); behavior.marker="delayed"; invite("a"); join("a")
+check("async mark waits without false welcome",#marks==1 and #messages==0 and #timers==1)
+fire("GROUP_ROSTER_UPDATE"); check("repeat roster does not resend native mark",#marks==1 and #messages==0)
+markers.self=1; fire("RAID_TARGET_UPDATE")
+check("observed star sends one welcome",#messages==1 and messages[1].msg=="Find me at {rt1}" and ns.Group.stats.markerConfirmed==1)
+timers[1].cb(); fire("RAID_TARGET_UPDATE"); check("stale confirmation timer no duplicate",#messages==1 and #marks==1)
+setup(); cmd("message {MARKER}"); behavior.marker="silent"; invite("a"); join("a"); timers[1].cb()
+check("silent native failure reports fallback without retry",#marks==1 and messages[1].msg=="(no marker)" and ns.Group.stats.markerUnconfirmed==1)
+cmd("groupstatus"); check("unconfirmed reason in diagnostics",logs[#logs]:find("no marker observed",1,true)~=nil)
+setup(); cmd("message {MARKER}"); behavior.marker="delayed"; invite("a"); join("a"); markers.self=8; timers[1].cb()
+check("timeout reads actual different mark",#marks==1 and messages[1].msg=="{rt8}")
+setup(); cmd("message {MARKER}"); behavior.unreadableOther=true; invite("a"); join("a")
+check("unready group delays first call",#marks==0 and #messages==0 and #timers==1)
+behavior.unreadableOther=false; timers[1].cb()
+check("settled roster allows safe first call",#marks==1 and messages[1].msg=="{rt4}")
+setup(); cmd("message {MARKER}"); behavior.unreadableOther=true; invite("a"); join("a"); timers[1].cb()
+check("unreadable roster remains protected after bounded wait",#marks==0 and messages[1].msg=="(no marker)")
+setup(); cmd("message {MARKER}"); behavior.unreadableOther=true; invite("a"); join("a"); behavior.unreadableOther=false; markers.a=4; timers[1].cb()
+check("occupied marker protected on delayed roster",#marks==0 and messages[1].msg=="(no marker)")
+setup(); cmd("message {MARKER}"); behavior.marker="delayed"; invite("a"); join("a"); invite("b"); join("b")
+check("multiple customers share one pending mark",#marks==1 and #messages==0)
+markers.self=4; fire("RAID_TARGET_UPDATE"); check("both waiting customers welcomed once",#messages==2 and #marks==1)
+setup(); behavior.marker="delayed"; invite("a"); join("a"); cmd("off"); cmd("on"); markers.self=4; fire("RAID_TARGET_UPDATE"); timers[1].cb()
+check("master toggle cancels queued marker welcome",#messages==0 and #marks==1)
+setup(); behavior.marker="delayed"; invite("a"); join("a"); roster={"self"}; fire("GROUP_ROSTER_UPDATE"); timers[1].cb()
+check("departed customer not welcomed after marker wait",#messages==0)
+setup(); behavior.marker="delayed"; invite("a"); join("a"); cmd("debug on"); timers[1].cb()
+check("debug cancels delayed welcome",#messages==0)
+setup(); behavior.ineligible=true; invite("a"); join("a"); behavior.ineligible=false; timers[1].cb()
+check("transient target eligibility rechecked before first request",#marks==1 and #messages==1)
 print(("PASS group total=%d; runtime=%s"):format(passed,_VERSION))

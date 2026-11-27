@@ -1,4 +1,4 @@
--- AutoEnchanter Forever 1.6.2 (release candidate)
+-- AutoEnchanter Forever 1.6.3 (release candidate)
 -- Normalized matching: ignores filler words, punctuation, spaces, and "Xg" / "X gold" patterns
 local ADDON = "Auto Enchanter"
 local addonName, ns = ...
@@ -605,7 +605,7 @@ SlashCmdList["AUTOENCHANTER"] = function(msg)
     end
     if cmd == "diagnostics" or cmd == "diag" then
         local version, build, _, interface = GetBuildInfo()
-        printSys(("Version 1.6.2; client=%s build=%s interface=%s"):format(tostring(version), tostring(build), tostring(interface)))
+        printSys(("Version 1.6.3; client=%s build=%s interface=%s"):format(tostring(version), tostring(build), tostring(interface)))
         local party = C_PartyInfo or {}
         printSys(("InviteUnit=%s CanInvite=%s IsPartyFull=%s IsGUIDInGroup=%s"):format(type(party.InviteUnit), type(party.CanInvite), type(party.IsPartyFull), type(party.IsGUIDInGroup)))
         printSys(("Menu.ModifyMenu=%s issecretvalue=%s; automatic invites blocked=%s"):format(type(Menu and Menu.ModifyMenu), type(issecretvalue), tostring(inviteBlocked == true)))
@@ -763,7 +763,7 @@ local frame = CreateFrame("Frame", "AutoEnchanterFrame")
 for _, event in ipairs({"ADDON_LOADED", "PLAYER_LOGIN", "PLAYER_ENTERING_WORLD", "CHAT_MSG_SAY", "CHAT_MSG_YELL", "CHAT_MSG_CHANNEL", "GROUP_ROSTER_UPDATE", "PARTY_LEADER_CHANGED", "ADDON_ACTION_BLOCKED", "ADDON_ACTION_FORBIDDEN"}) do
     frame:RegisterEvent(event)
 end
-for _,event in ipairs({"GUILD_ROSTER_UPDATE","PLAYER_GUILD_UPDATE","CHAT_MSG_SYSTEM","TRADE_SHOW","TRADE_CLOSED","TRADE_ACCEPT_UPDATE","TRADE_PLAYER_ITEM_CHANGED","TRADE_TARGET_ITEM_CHANGED","TRADE_MONEY_CHANGED","TRADE_CURRENCY_CHANGED","TRADE_UPDATE","TRADE_REQUEST_CANCEL","PLAYER_TRADE_MONEY","PLAYER_TRADE_CURRENCY","UI_INFO_MESSAGE","UI_ERROR_MESSAGE","ENCHANT_SPELL_COMPLETED","UNIT_SPELLCAST_SUCCEEDED"}) do
+for _,event in ipairs({"RAID_TARGET_UPDATE","GUILD_ROSTER_UPDATE","PLAYER_GUILD_UPDATE","CHAT_MSG_SYSTEM","TRADE_SHOW","TRADE_CLOSED","TRADE_ACCEPT_UPDATE","TRADE_PLAYER_ITEM_CHANGED","TRADE_TARGET_ITEM_CHANGED","TRADE_MONEY_CHANGED","TRADE_CURRENCY_CHANGED","TRADE_UPDATE","TRADE_REQUEST_CANCEL","PLAYER_TRADE_MONEY","PLAYER_TRADE_CURRENCY","UI_INFO_MESSAGE","UI_ERROR_MESSAGE","ENCHANT_SPELL_COMPLETED","UNIT_SPELLCAST_SUCCEEDED"}) do
     pcall(frame.RegisterEvent,frame,event)
 end
 frame:SetScript("OnEvent", function(self, event, ...)
@@ -785,7 +785,7 @@ frame:SetScript("OnEvent", function(self, event, ...)
     elseif event == "PLAYER_LOGIN" then
         if not db then InitDB() end
         RefreshIdentity()
-        printSys("Loaded 1.6.2. ENABLED=" .. (db.enabled and "ON" or "OFF") .. "; DEBUG=" .. (db.debug and "ON" or "OFF") .. "; popup=" .. (db.popupEnabled and "ON" or "OFF"))
+        printSys("Loaded 1.6.3. ENABLED=" .. (db.enabled and "ON" or "OFF") .. "; DEBUG=" .. (db.debug and "ON" or "OFF") .. "; popup=" .. (db.popupEnabled and "ON" or "OFF"))
         InitModernMenus()
         options:Init(group, printSys)
         minimap:Init(db,dashboard,printSys)
@@ -797,6 +797,8 @@ frame:SetScript("OnEvent", function(self, event, ...)
         ledger:OnRoster(); group:OnRoster()
     elseif event == "GROUP_ROSTER_UPDATE" or event == "PARTY_LEADER_CHANGED" then
         ledger:OnRoster(); group:OnRoster(); dashboard:QueueRefresh()
+    elseif event=="RAID_TARGET_UPDATE" then
+        group:MarkerUpdated()
     elseif event=="GUILD_ROSTER_UPDATE" then
         guild:Refresh(); dashboard:QueueRefresh()
     elseif event=="PLAYER_GUILD_UPDATE" then
