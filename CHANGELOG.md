@@ -10,6 +10,11 @@ Post-release test evidence is maintained under [docs/verification/](docs/verific
 - Recorded v1.6.0 publication evidence, benchmark results, the resolved intermediate TOC failure, and outstanding live acceptance checks.
 - Updated contributor workflow to keep new modules and TOC entries together. No runtime or package changes.
 
+## 1.6.4 — Clickable Enchanting welcome link
+
+- Added `{ENCHANTING}` to the welcome template and editor insertion buttons. Use the native current-character profession hyperlink, not a spell link or fabricated text.
+- Verified own open profession window fallback; explicit unavailable text and existing expanded byte limit. No change to invite path, marker confirmation, ledger or guild whisper.
+
 ## 1.6.3 — Marker confirmation and diagnostics
 
 - Wait briefly for an incomplete group roster before first self-marker attempt.

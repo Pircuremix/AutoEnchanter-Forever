@@ -49,10 +49,10 @@ function UI:Build(parent,x,y)
             preview:SetText(msg or reason)
         end
         edit:SetScript("OnTextChanged",updatePreview)
-        for i,token in ipairs({"CUSTOMER","MARKER","MARKER_NAME","PLAYER","ZONE"}) do
+        for i,token in ipairs({"CUSTOMER","MARKER","MARKER_NAME","PLAYER","ZONE","ENCHANTING"}) do
             local value="{"..token.."}"
             local b=CreateFrame("Button",nil,panel,"UIPanelButtonTemplate")
-            b:SetSize(105,24); b:SetPoint("TOPLEFT",panel,"TOPLEFT",16+(i-1)*109,-170)
+            b:SetSize(i==3 and 106 or 85,24); b:SetPoint("TOPLEFT",panel,"TOPLEFT",16+(i-1)*89+(i>3 and 21 or 0),-170)
             b:SetText(token)
             b:SetScript("OnClick",function()
                 edit:SetFocus(); edit:Insert(value); updatePreview()
@@ -60,9 +60,9 @@ function UI:Build(parent,x,y)
         end
         -- Update visible previews when actual raid markers change; no polling.
         if type(panel.RegisterEvent)=="function" then
-            pcall(panel.RegisterEvent,panel,"RAID_TARGET_UPDATE")
+            for _,event in ipairs({"RAID_TARGET_UPDATE","TRADE_SKILL_SHOW","TRADE_SKILL_LIST_UPDATE","SKILL_LINES_CHANGED","SPELLS_CHANGED"}) do pcall(panel.RegisterEvent,panel,event) end
             panel:SetScript("OnEvent",function(self,event)
-                if event=="RAID_TARGET_UPDATE" and self:IsVisible() then updatePreview() end
+                if self:IsVisible() then updatePreview() end
             end)
         end
         local save=CreateFrame("Button",nil,panel,"UIPanelButtonTemplate")

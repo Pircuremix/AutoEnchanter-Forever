@@ -34,6 +34,7 @@ function Group:Init(db, log)
     self.latch, self.simLatch, self.waiting, self.generation = false, false, false, 0
     self.chatBlocked, self.markerBlocked, self.raidBlocked = false, false, false
     self.markerWait=nil; self.markerLast="not attempted"
+    self.enchantingLast="not requested"
     self.stats = {tracked=0, accepted=0, expired=0, welcomes=0, chatSkipped=0,
         marks=0, markerSkipped=0, markerConfirmed=0, markerUnconfirmed=0, conversions=0, raidConfirmed=0, raidSimulated=0}
 end
@@ -135,6 +136,58 @@ local function inInstance()
     local value, ok = safe(IsInInstance)
     return not ok or value ~= false
 end
+-- Native spellbook profession links belong to the logged-in player.
+-- Never build a trade hyperlink from guessed spell IDs, recipe bitmaps or GUIDs.
+local function validTradeLink(link)
+    if not readable(link) or type(link)~="string" or #link>255 or link:find("[%z\1-\31\127]") then return false end
+    -- Only an entire native trade link, optionally with normal color markup.
+    local body=link:match("^|c%x%x%x%x%x%x%x%x(.*)|r$") or link
+    local payload,label=body:match("^|Htrade:([^|]+)|h(%[[^|%[%]]+%])|h$")
+    return payload~=nil and label~=nil
+end
+function Group:EnchantingLink()
+    local book=C_SpellBook
+    local bank=Enum and Enum.SpellBookSpellBank and Enum.SpellBookSpellBank.Player
+    if type(GetProfessions)=="function" and type(GetProfessionInfo)=="function" then
+        local ok,p1,p2=pcall(GetProfessions)
+        if ok then
+            for i=1,2 do
+                local index=i==1 and p1 or p2
+                if readable(index) and integer(index,1,100) then
+                    local good,name,icon,rank,maxRank,numSpells,offset,skillLine=pcall(GetProfessionInfo,index)
+                    if good and readable(skillLine) and skillLine==333 and readable(offset) and integer(offset,0,100000) then
+                        -- Blizzard's Camelot profession tabs use spellOffset+1.
+                        -- Search other entries only in this same profession if necessary.
+                        local n=readable(numSpells) and integer(numSpells,1,100) and numSpells or 1
+                        if bank~=nil then
+                            for slot=offset+1,offset+n do
+                                local link=safe(book and book.GetSpellBookItemTradeSkillLink,slot,bank)
+                                if validTradeLink(link) then self.enchantingLast="native player spellbook"; return link end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+    -- The link button in Blizzard's profession UI uses the current list.
+    -- Only use it when all context is positively verified as OUR Enchanting.
+    local api=C_TradeSkillUI
+    if api and safe(api.IsTradeSkillLinked)==false and safe(api.IsTradeSkillGuild)==false
+       and safe(api.IsDataSourceChanging)==false then
+        local info=safe(api.GetBaseProfessionInfo)
+        if type(info)=="table" and (not canaccesstable or canaccesstable(info)) then
+            local id,profession=info.professionID,info.profession
+            local enchanting=Enum and Enum.Profession and Enum.Profession.Enchanting
+            if (readable(id) and id==333) or (enchanting~=nil and readable(profession) and profession==enchanting) then
+                local link=safe(api.GetTradeSkillListLink)
+                if validTradeLink(link) then self.enchantingLast="native own profession window"; return link end
+            end
+        end
+    end
+    self.enchantingLast="unavailable; open your own Enchanting window and preview"
+    return nil
+end
 -- Pure template substitution with read-only native context. No recursive expansion.
 -- Numeric raid icon tokens are locale-independent; never infer from configured marker.
 function Group:ExpandWelcome(template, customer)
@@ -146,7 +199,7 @@ function Group:ExpandWelcome(template, customer)
         player=ok and type(first)=="string" and first or "me",
         zone=type(zone)=="string" and zone or "my location"
     }
-    local markerRead=false
+    local markerRead, enchantingRead=false,false
     local msg=template:gsub("{([%a_]+)}",function(k)
         local key=k:lower()
         if (key=="marker" or key=="marker_name") and not markerRead then
@@ -160,6 +213,10 @@ function Group:ExpandWelcome(template, customer)
             else
                 values.marker,values.marker_name="(marker unavailable)","(marker unavailable)"
             end
+        end
+        if key=="enchanting" and not enchantingRead then
+            enchantingRead=true
+            values.enchanting=self:EnchantingLink() or "[Enchanting link unavailable]"
         end
         return values[key] or "{"..k.."}"
     end)
@@ -405,6 +462,7 @@ function Group:Status()
     local current,ok=safe(GetRaidTargetIndex,"player")
     local display=not ok and "unreadable" or integer(current,1,8) and MARKER_NAMES[current] or (current==nil or current==0) and "none" or "invalid"
     self.log(("Marker: current=%s; confirmed=%d; unconfirmed=%d; last=%s"):format(display,s.markerConfirmed,s.markerUnconfirmed,self.markerLast))
+    self.log("Enchanting link: "..self.enchantingLast)
 end
 function Group:Command(cmd, rest)
     if cmd=="groupstatus" then self:Status(); return true end

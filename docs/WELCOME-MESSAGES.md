@@ -1,4 +1,4 @@
-# Welcome message templates — 1.6.1
+# Welcome message templates — 1.6.4
 
 Open /ae settings, edit Welcome message, click placeholder buttons to insert at the cursor, and Save or press Enter. The shared native addon settings canvas has the same controls.
 
@@ -9,6 +9,7 @@ Open /ae settings, edit Welcome message, click placeholder buttons to insert at 
 | {MARKER_NAME} | English name: Star, Circle, Diamond, Triangle, Moon, Square, Cross, Skull |
 | {PLAYER} | Your character name from UnitName |
 | {ZONE} | Current zone |
+| {ENCHANTING} | Your current character's native clickable Enchanting profession hyperlink |
 
 Example: `/ae message Hey {CUSTOMER}, find me at {MARKER}. Please open trade when you're ready.`
 
@@ -19,3 +20,7 @@ After observed acceptance (and any existing raid conversion wait), Group:Flush f
 Settings preview uses unsaved edit text, sample name Example Customer, and current actual marker, updating on text edits and visible RAID_TARGET_UPDATE. /ae preview [customer name] uses the saved template and optionally a supplied sample name. Both are local only; native ReplaceIconAndGroupExpressions renders icons where available, otherwise shows the raw token. Preview never sends chat, marks, invites, or changes settings. Normal guild whisper is independent and unchanged.
 
 Live test: set a welcome with CUSTOMER/MARKER/MARKER_NAME, preview, then invite a consenting customer with no mark and auto-marker enabled. Confirm actual icon in PARTY; manually change to Skull and invite another, confirm Skull remains. Turn marking off and remove mark: verify fallback. Confirm RAID routing after conversion. Native marker rendering may differ by client/chat settings; mock tests verify outgoing token only.
+
+## Enchanting profession link (1.6.4)
+
+Example: `/ae message Hey {CUSTOMER}, here's my {ENCHANTING}. Find me at {MARKER} and open trade when ready.` Use the ENCHANTING insertion button or type the token. The native player spellbook link is generated from the current character's Enchanting primary profession (skill line 333), not a saved or fabricated hyperlink. If the spellbook API cannot provide it, only a verified own, non-guild, non-linked, stable Enchanting profession window can supply a fallback. Open your own Enchanting window and use /ae preview to check. If no native link can be read, use [Enchanting link unavailable]; do not send another player's or a different profession's link. The full raw expanded message still must fit 255 bytes; shorten the text if needed. Preview may display the hyperlink label, but actual clickability must be verified by a receiving player in PARTY/RAID. No profession window opened automatically; no saved link cache, no work before invite, and no change to guild whisper.

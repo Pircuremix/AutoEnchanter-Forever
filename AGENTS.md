@@ -31,6 +31,10 @@ Read docs/MANUAL-INVITES.md. Observe native calls without replacing protected AP
 
 A void SetRaidTarget call is not proof of marker assignment. Wait for readable actual mark via RAID_TARGET_UPDATE or bounded timeout; do not retry native requests, steal occupied marks or bypass protected API restrictions. One bounded roster recheck is permitted before first call. Keep pending welcomes session-only and revalidate membership/channel before send. No invite-path work.
 
+## Profession hyperlink invariants (1.6.4)
+
+ENCHANTING resolves only from native current-character Enchanting trade links. Never fabricate payloads or use linked/guild/other profession views. No saved hyperlink cache or automatic opening, no pre-invite work. Preserve raw link markup and expanded message validation. Live receiver clickability is not proven by mocks.
+
 ## Implementation workflow
 
 1. Check the exact current branch, API source for the Forever client, and existing tests. Update docs/ARCHITECTURE.md if contracts or modules change.

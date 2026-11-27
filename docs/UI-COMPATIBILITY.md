@@ -21,3 +21,7 @@ Business Manager adds Blacklist (filter/search/sort, paging, recent history, two
 ## 1.6.1
 
 Shared group settings canvas adds five placeholder buttons, an editable-message local preview and marker-change refresh while visible. Both the Business Manager and native addon settings use this canvas. Save/Enter persists the raw template, Escape restores it. Preview uses current marker, not configured marker; icon rendering falls back to native token text if the renderer is unavailable. See WELCOME-MESSAGES.md. No changes to minimap or EllesmereUI.
+
+## 1.6.4
+
+Welcome template editor adds ENCHANTING insertion button and updates local preview on profession/spellbook events while visible. Native hyperlink is generated on expansion; live layout and receiving-player clickability remain unverified.

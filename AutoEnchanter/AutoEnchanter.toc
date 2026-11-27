@@ -2,7 +2,7 @@
 ## Title: Auto Enchanter
 ## Notes: Forever: enchant customer matching, group automation and local business ledger.
 ## Author: Sleepy
-## Version: 1.6.3
+## Version: 1.6.4
 ## Category: Professions
 ## IconTexture: Interface\AddOns\AutoEnchanter\AutoEnchanterIcon
 ## SavedVariables: AutoEnchanterDB

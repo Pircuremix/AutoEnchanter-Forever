@@ -251,4 +251,68 @@ setup(); behavior.marker="delayed"; invite("a"); join("a"); cmd("debug on"); tim
 check("debug cancels delayed welcome",#messages==0)
 setup(); behavior.ineligible=true; invite("a"); join("a"); behavior.ineligible=false; timers[1].cb()
 check("transient target eligibility rechecked before first request",#marks==1 and #messages==1)
+-- Native Enchanting link fixtures (synthetic, not real player links).
+local link="|cffffd000|Htrade:333:300:300:synthetic:abc|h[Enchanting]|h|r"
+local other="|cffffd000|Htrade:164:300:300:synthetic:def|h[Blacksmithing]|h|r"
+setup()
+local calls=0
+Enum={SpellBookSpellBank={Player=0},Profession={Enchanting=9}}
+GetProfessions=function() return 1,2 end
+GetProfessionInfo=function(index)
+    if index==1 then return "Blacksmithing",0,300,300,1,10,164 end
+    return "Localized enchanting",0,300,300,2,20,333
+end
+C_SpellBook={GetSpellBookItemTradeSkillLink=function(slot,bank)
+    calls=calls+1; assert(bank==0)
+    if slot==11 then return other end
+    if slot==21 then return link end
+end}
+check("native own enchanting spellbook link",ns.Group:ExpandWelcome("{ENCHANTING}","A")==link and calls==1)
+calls=0
+check("case insensitive repeated link resolves once",ns.Group:ExpandWelcome("{enchanting} {EnChAnTiNg}","A")==link.." "..link and calls==1)
+cmd("message Hey {CUSTOMER}, {ENCHANTING} {MARKER}"); invite("a","Alice Stone"); join("a")
+check("welcome sends original native clickable markup",messages[1].msg=="Hey Alice Stone, "..link.." {rt4}")
+check("preview preserves raw link for local render",ns.Group:PreviewWelcome("{ENCHANTING}","A")==link)
+check("expanded link obeys byte limit",ns.Group:ExpandWelcome(string.rep("{ENCHANTING}",5),"A")==nil)
+C_SpellBook.GetSpellBookItemTradeSkillLink=function(slot) if slot==22 then return link end end
+check("search within own enchanting profession only",ns.Group:EnchantingLink()==link)
+GetProfessions=function() return 1 end
+check("no enchanting does not substitute another profession",ns.Group:ExpandWelcome("{ENCHANTING}","A")=="[Enchanting link unavailable]")
+GetProfessions=function() return 2 end
+GetProfessionInfo=function() return "Enchanting",0,300,300,1,20,333 end
+C_SpellBook.GetSpellBookItemTradeSkillLink=function() return "|Hspell:7411|h[Enchanting]|h" end
+check("reject non-trade hyperlink",ns.Group:EnchantingLink()==nil)
+C_SpellBook.GetSpellBookItemTradeSkillLink=function() return secret end
+check("secret link rejected",ns.Group:EnchantingLink()==nil)
+C_SpellBook.GetSpellBookItemTradeSkillLink=function() error("unavailable") end
+check("link API error safe",ns.Group:EnchantingLink()==nil)
+C_TradeSkillUI={IsTradeSkillLinked=function() return false end,IsTradeSkillGuild=function() return false end,
+    IsDataSourceChanging=function() return false end,GetBaseProfessionInfo=function() return {professionID=333} end,
+    GetTradeSkillListLink=function() return link end}
+check("verified own open enchanting window fallback",ns.Group:EnchantingLink()==link)
+C_TradeSkillUI.IsTradeSkillLinked=function() return true end
+check("other player's linked window never used",ns.Group:EnchantingLink()==nil)
+C_TradeSkillUI.IsTradeSkillLinked=function() return false end
+C_TradeSkillUI.IsTradeSkillGuild=function() return true end
+check("guild profession window never used",ns.Group:EnchantingLink()==nil)
+C_TradeSkillUI.IsTradeSkillGuild=function() return false end
+C_TradeSkillUI.IsDataSourceChanging=function() return true end
+check("changing profession source never used",ns.Group:EnchantingLink()==nil)
+C_TradeSkillUI.IsDataSourceChanging=function() return false end
+C_TradeSkillUI.GetBaseProfessionInfo=function() return {professionID=164} end
+check("non enchanting open window never used",ns.Group:EnchantingLink()==nil)
+C_TradeSkillUI.GetBaseProfessionInfo=function() return secret end
+check("secret profession info safe",ns.Group:EnchantingLink()==nil)
+C_TradeSkillUI.GetBaseProfessionInfo=function() return {professionID=333} end
+C_TradeSkillUI.GetTradeSkillListLink=function() return link.." extra" end
+check("reject malformed native link",ns.Group:EnchantingLink()==nil)
+local editor,button
+for _,f in ipairs(frames) do
+    if f.kind=="EditBox" then editor=f end
+    if f.text=="ENCHANTING" then button=f end
+end
+editor:SetText("My "); button.scripts.OnClick(button)
+check("enchanting editor button inserts token",editor:GetText()=="My {ENCHANTING}")
+GetProfessions=nil; GetProfessionInfo=nil; C_SpellBook=nil; C_TradeSkillUI=nil; Enum=nil
+check("absent profession APIs keep welcome usable",ns.Group:ExpandWelcome("Hi {CUSTOMER} {ENCHANTING}","A")=="Hi A [Enchanting link unavailable]")
 print(("PASS group total=%d; runtime=%s"):format(passed,_VERSION))
