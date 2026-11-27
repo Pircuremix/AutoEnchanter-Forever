@@ -1,6 +1,6 @@
 # WowUp installation and release integration
 
-AutoEnchanter targets **World of Warcraft: Forever** (client interface 16001 as of v1.6.2). The GitHub repository is public, so a personal access token is not needed for ordinary installation.
+AutoEnchanter targets **World of Warcraft: Forever** (client interface 16001 as of v1.6.3). The GitHub repository is public, so a personal access token is not needed for ordinary installation.
 
 ## Install with WowUp
 
@@ -26,13 +26,13 @@ The v1.3.1 release used the suffix convention `AutoEnchanter-1.3.1-forever.zip`.
 - `AutoEnchanter-<version>.zip`: installable package.
 - `release.json`: metadata mapping the package to the Forever client.
 
-Example metadata for v1.6.2:
+Example metadata for v1.6.3:
 
 ```json
 {
   "releases": [
     {
-      "filename": "AutoEnchanter-1.6.2.zip",
+      "filename": "AutoEnchanter-1.6.3.zip",
       "nolib": false,
       "metadata": [
         { "flavor": "forever", "interface": 16001 }
@@ -42,7 +42,7 @@ Example metadata for v1.6.2:
 }
 ```
 
-The asset filename must exactly match the metadata entry. WowUp v2.25.5 first attempts metadata-based selection, then falls back to client-specific filename matching. It maps the Forever client to flavor `forever` and displays the asset's name as its version label. Consequently the expected display for this release is `AutoEnchanter-1.6.2.zip`, not just `1.6.2`. This is not an incorrect addon version. Older builds may require the legacy suffix; update WowUp if necessary.
+The asset filename must exactly match the metadata entry. WowUp v2.25.5 first attempts metadata-based selection, then falls back to client-specific filename matching. It maps the Forever client to flavor `forever` and displays the asset's name as its version label. Consequently the expected display for this release is `AutoEnchanter-1.6.3.zip`, not just `1.6.3`. This is not an incorrect addon version. Older builds may require the legacy suffix; update WowUp if necessary.
 
 ## Verify the update
 
@@ -79,4 +79,4 @@ Manual fallback: download the named addon ZIP from Releases and extract it into 
 
 For v1.3.2 the corrected [release run](https://github.com/Pircuremix/AutoEnchanter-Forever/actions/runs/45490266550) and [regression run](https://github.com/Pircuremix/AutoEnchanter-Forever/actions/runs/45490266585) completed successfully; [the published release](https://github.com/Pircuremix/AutoEnchanter-Forever/releases/tag/v1.3.2) contains both assets. An earlier release attempt failed due to shell quoting and was corrected. The owner subsequently confirmed the v1.3.2 WowUp automatic update worked. Live game behavior is still a separate acceptance test.
 
-For v1.6.2, see the [verified release record](verification/v1.6.2.md) for successful publication, package validation and exact CI results. The TOC lists all eleven Lua runtime modules; schema 1 customerLedger migrates to schema 2. Customer ledger data is local SavedVariables and is never included in a release asset. Back up SavedVariables, restart WoW after updating, and verify /ae diagnostics. The owner's successful WowUp update report applies to v1.3.2, not an independently confirmed installation of v1.6.2.
+For v1.6.3, see the [verified release record](verification/v1.6.3.md) for successful publication, package validation and exact CI results. The TOC lists all eleven Lua runtime modules; schema 1 customerLedger migrates to schema 2. Customer ledger data is local SavedVariables and is never included in a release asset. Back up SavedVariables, restart WoW after updating, and verify /ae diagnostics. The owner's successful WowUp update report applies to v1.3.2, not an independently confirmed installation of v1.6.3.

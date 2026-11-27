@@ -1,6 +1,6 @@
 # AutoEnchanter documentation
 
-Current source addon: **1.6.3** · Forever interface 16001 · customerLedger schema 2.
+Current published addon: **1.6.3** · Forever interface 16001 · customerLedger schema 2.
 
 Start here if maintaining the project, troubleshooting it, or handing it to another developer or AI. The actual code and TOC are authoritative for implementation; the documents below explain the intended contracts. Historical release notes are not current implementation instructions.
 
