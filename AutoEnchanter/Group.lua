@@ -152,7 +152,8 @@ function Group:EnchantingLink()
         local ok,p1,p2=pcall(GetProfessions)
         if ok then
             for i=1,2 do
-                local index=i==1 and p1 or p2
+                local index
+                if i==1 then index=p1 else index=p2 end
                 if readable(index) and integer(index,1,100) then
                     local good,name,icon,rank,maxRank,numSpells,offset,skillLine=pcall(GetProfessionInfo,index)
                     if good and readable(skillLine) and skillLine==333 and readable(offset) and integer(offset,0,100000) then
@@ -461,8 +462,8 @@ function Group:Status()
     self.log(("Group calls: chat=%d skipped=%d blocked=%s; marker=%d skipped=%d blocked=%s; conversion=%d observed=%d simulated=%d blocked=%s"):format(s.welcomes,s.chatSkipped,tostring(self.chatBlocked),s.marks,s.markerSkipped,tostring(self.markerBlocked),s.conversions,s.raidConfirmed,s.raidSimulated,tostring(self.raidBlocked)))
     local current,ok=safe(GetRaidTargetIndex,"player")
     local display=not ok and "unreadable" or integer(current,1,8) and MARKER_NAMES[current] or (current==nil or current==0) and "none" or "invalid"
-    self.log(("Marker: current=%s; confirmed=%d; unconfirmed=%d; last=%s"):format(display,s.markerConfirmed,s.markerUnconfirmed,self.markerLast))
     self.log("Enchanting link: "..self.enchantingLast)
+    self.log(("Marker: current=%s; confirmed=%d; unconfirmed=%d; last=%s"):format(display,s.markerConfirmed,s.markerUnconfirmed,self.markerLast))
 end
 function Group:Command(cmd, rest)
     if cmd=="groupstatus" then self:Status(); return true end

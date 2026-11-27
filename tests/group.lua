@@ -268,6 +268,9 @@ C_SpellBook={GetSpellBookItemTradeSkillLink=function(slot,bank)
     if slot==21 then return link end
 end}
 check("native own enchanting spellbook link",ns.Group:ExpandWelcome("{ENCHANTING}","A")==link and calls==1)
+GetProfessions=function() return secret,2 end
+check("secret primary profession index safely ignored",ns.Group:EnchantingLink()==link)
+GetProfessions=function() return 1,2 end
 calls=0
 check("case insensitive repeated link resolves once",ns.Group:ExpandWelcome("{enchanting} {EnChAnTiNg}","A")==link.." "..link and calls==1)
 cmd("message Hey {CUSTOMER}, {ENCHANTING} {MARKER}"); invite("a","Alice Stone"); join("a")
