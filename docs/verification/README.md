@@ -4,6 +4,7 @@ These records supplement historical release notes with actual CI and publication
 
 | Release | Automated verification | Publication | Live status |
 |---|---|---|---|
+| [1.6.4](v1.6.4.md) | 295 checks per Lua runtime; package verified | Confirmed | Pending |
 | [1.6.3](v1.6.3.md) | 275 checks per Lua runtime; package verified | Confirmed | Pending |
 | [1.6.2](v1.6.2.md) | 258 checks per Lua runtime; package verified | Confirmed | Pending |
 | [1.6.1](v1.6.1.md) | 230 checks per Lua runtime; package verified | Confirmed | Pending |
